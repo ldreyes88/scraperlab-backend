@@ -1,0 +1,35 @@
+{
+  "name": "scraperlab-backend",
+  "version": "1.0.0",
+  "description": "Backend centralizado para gestión de scraping por dominios",
+  "main": "lambda.js",
+  "scripts": {
+    "start": "node lambda.js",
+    "dev": "nodemon server.js",
+    "logs": "serverless logs -f api --tail",
+    "remove": "serverless remove",
+    "init:providers": "node scripts/initProviders.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.980.0",
+    "@aws-sdk/client-dynamodb": "^3.980.0",
+    "@aws-sdk/lib-dynamodb": "^3.980.0",
+    "axios": "^1.13.4",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^3.2.2",
+    "serverless-http": "^4.0.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11",
+    "serverless": "^4.31.2"
+  }
+}

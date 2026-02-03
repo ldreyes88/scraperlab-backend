@@ -1,0 +1,118 @@
+---
+description: Patrones y mejores prácticas para servicios de ScraperLab
+globs: **/services/*.js
+alwaysApply: false
+---
+
+# Services - Patrones y Mejores Prácticas
+
+## Responsabilidades de los Services
+
+Los servicios deben:
+- Orquestar la lógica de negocio
+- Llamar a repositories para acceso a datos
+- Llamar a strategies para scraping
+- Manejar errores y logging
+- Retornar datos estructurados
+
+## Estructura de un Service
+
+```javascript
+// ✅ ESTRUCTURA CORRECTA
+const Repository = require('../repositories/Repository');
+const Strategy = require('../strategies/Strategy');
+
+class MyService {
+  static async mainMethod(params) {
+    const startTime = Date.now();
+    
+    try {
+      // 1. Validación/preparación
+      // 2. Obtener datos (repository/strategy)
+      // 3. Procesar/transformar
+      // 4. Logging opcional
+      
+      const responseTime = Date.now() - startTime;
+      
+      return {
+        success: true,
+        data: result,
+        metadata: { responseTime }
+      };
+      
+    } catch (error) {
+      // Logging de errores
+      throw error; // Propagar al handler
+    }
+  }
+}
+
+module.exports = MyService;
+```
+
+## Patrones Importantes
+
+### 1. Métodos Estáticos
+Los servicios usan métodos estáticos (no instancias):
+
+```javascript
+// ✅ CORRECTO
+class ScraperService {
+  static async scrapeUrl(url) { ... }
+}
+
+// ❌ INCORRECTO
+class ScraperService {
+  async scrapeUrl(url) { ... }
+}
+```
+
+### 2. Logging y Métricas
+
+Siempre registrar:
+- Tiempo de respuesta (`responseTime`)
+- Timestamp ISO 8601
+- Success/error status
+
+```javascript
+const responseTime = Date.now() - startTime;
+await ProcessRepository.create({
+  url,
+  success: true,
+  responseTime,
+  timestamp: new Date().toISOString()
+});
+```
+
+### 3. Manejo de Errores
+
+```javascript
+// ✅ CORRECTO - Capturar, registrar, y propagar
+try {
+  const result = await operation();
+  return { success: true, data: result };
+} catch (error) {
+  // Log del error
+  await logError(error);
+  // Propagar para que el handler lo maneje
+  throw error;
+}
+
+// ❌ INCORRECTO - Swallow error sin propagar
+try {
+  const result = await operation();
+} catch (error) {
+  console.log(error);
+  return null;
+}
+```
+
+### 4. Llamadas a Strategies
+
+```javascript
+// ✅ CORRECTO
+const strategy = StrategyFactory.getDomainStrategy(domain, providerId);
+const result = await strategy.scrape(url, config);
+
+// Siempre pasar configuración completa a strategies
+```

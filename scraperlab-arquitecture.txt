@@ -1,0 +1,3 @@
+Cliente (scraperlab-web) <---> API Gateway <---> Lambda (Express App) <---> DynamoDB
+                                                                      │
+                                                                      └──> Providers Externos (ScraperAPI, Oxylabs)

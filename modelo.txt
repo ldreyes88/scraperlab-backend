@@ -1,0 +1,92 @@
+
+##PROVIDER
+{
+  "providerId": "scraperapi",           // PK
+  "name": "ScraperAPI",
+  "baseUrl": "https://api.scraperapi.com/",
+  "authType": "api_key",                // api_key | bearer | basic
+  "configSchema": {
+    "render": {
+      "type": "boolean",
+      "default": true,
+      "required": false,
+      "description": "Renderizar JavaScript"
+    },
+    "premium": {
+      "type": "boolean",
+      "default": false,
+      "required": false,
+      "description": "Usar proxies premium"
+    },
+    "device_type": {
+      "type": "enum",
+      "values": ["desktop", "mobile", "tablet"],
+      "default": "desktop",
+      "required": false
+    },
+    "country_code": {
+      "type": "string",
+      "pattern": "^[a-z]{2}$",
+      "default": "us",
+      "required": false
+    },
+    "wait": {
+      "type": "number",
+      "min": 0,
+      "max": 10000,
+      "default": 0,
+      "description": "Tiempo de espera en ms"
+    },
+    "wait_for_selector": {
+      "type": "string",
+      "required": false,
+      "description": "Selector CSS a esperar"
+    }
+  },
+  "pricing": {
+    "costPerRequest": 0.001,
+    "currency": "USD"
+  },
+  "rateLimit": {
+    "requestsPerSecond": 5,
+    "maxConcurrent": 100
+  },
+  "enabled": true,
+  "createdAt": "2026-01-30T10:00:00Z"
+}
+
+#Domains
+
+{
+  "domainId": "alkosto.com",           // PK
+  "providerId": "scraperapi",          // FK a ScraperLab-Providers
+  
+  // ✅ Config específica del proveedor (solo campos válidos)
+  "providerConfig": {
+    "render": true,
+    "premium": true,
+    "device_type": "desktop",
+    "country_code": "co",
+    "wait": 2000,
+    "wait_for_selector": ".alk-main-price"
+  },
+  
+  // Selectores específicos del dominio
+  "selectors": {
+    "priceSelector": ".alk-main-price",
+    "originalPriceSelector": ".old-price",
+    "titleSelector": "h1.product-title",
+    "imageSelector": "img.product-image",
+    "availabilitySelector": ".stock-status"
+  },
+  
+  // Rate limiting específico del dominio (override del provider)
+  "customRateLimit": {
+    "requestsPerMinute": 10,
+    "cooldownSeconds": 60
+  },
+  
+  "enabled": true,
+  "createdAt": "2026-01-30T10:00:00Z",
+  "updatedAt": "2026-01-30T10:00:00Z"
+}

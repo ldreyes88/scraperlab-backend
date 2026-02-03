@@ -1,0 +1,77 @@
+scraperlab-backend/
+├── src/
+│   ├── config/
+│   │   └── database.js                 (Configuración DynamoDB)
+│   ├── handlers/
+│   │   ├── scraper.js                  (Endpoints de scraping)
+│   │   ├── providers.js                (CRUD de proveedores)
+│   │   ├── domains.js                  (CRUD de dominios/configuraciones)
+│   │   └── process.js                  (Logs y estadísticas)
+│   ├── services/
+│   │   ├── ScraperService.js           (Lógica de scraping principal)
+│   │   ├── ProviderService.js          (Gestión de proveedores)
+│   │   ├── DomainConfigService.js      (Gestión de configuraciones)
+│   │   └── ProcessService.js           (Gestión de logs)
+│   ├── repositories/
+│   │   ├── ProviderRepository.js       (Acceso a Providers table)
+│   │   ├── DomainRepository.js         (Acceso a Domains table)
+│   │   └── ProcessRepository.js        (Acceso a Process table)
+│   ├── strategies/
+│   │   ├── BaseStrategy.js             (Clase base para providers)
+│   │   ├── ScraperAPIStrategy.js       (Implementación ScraperAPI)
+│   │   ├── OxylabsStrategy.js          (Implementación Oxylabs)
+│   │   ├── StrategyFactory.js          (Factory pattern)
+│   │   └── domain/
+│   │       ├── BaseDomainStrategy.js   (Clase base para dominios)
+│   │       ├── FalabellaStrategy.js    (Scraping Falabella)
+│   │       ├── ExitoStrategy.js        (Scraping Éxito)
+│   │       └── MercadoLibreStrategy.js (Scraping MercadoLibre)
+│   ├── middleware/
+│   │   └── errorHandler.js             (Manejo global de errores)
+│   └── utils/
+│       ├── helpers.js                  (Utilidades generales)
+│       ├── response.js                 (Formateo de respuestas)
+│       └── time.js                     (Utilidades de tiempo)
+├── .cursor/
+│   └── rules/                          (Reglas de Cursor)
+│       ├── project-architecture.mdc    (Arquitectura general)
+│       ├── services-patterns.mdc       (Patrones de servicios)
+│       └── strategies-patterns.mdc     (Patrones de strategies)
+├── server.js                           (Servidor Express local)
+├── lambda.js                           (Handler para AWS Lambda)
+├── serverless.yml                      (Configuración Serverless Framework)
+├── package.json
+├── .env                                (Variables de entorno locales)
+├── .env.example                        (Ejemplo de variables)
+├── README.md
+├── scraperlab-arquitecture.txt
+└── scraperlab-structure.txt
+
+Node.js + Express + AWS Lambda + DynamoDB + Cheerio
+
+✅ Arquitectura en Capas:
+
+- handlers/      (Controladores HTTP: validación, respuestas)
+- services/      (Lógica de negocio y orquestación)
+- repositories/  (Acceso a datos DynamoDB)
+- strategies/    (Patrón Strategy: providers y dominios)
+- middleware/    (Manejo de errores, CORS, etc)
+- utils/         (Funciones reutilizables)
+
+✨ Patrón Strategy:
+
+Cada dominio (Falabella, Éxito, MercadoLibre) tiene su propia estrategia
+de extracción que hereda de BaseDomainStrategy. Los providers externos
+(ScraperAPI, Oxylabs) también usan el patrón Strategy.
+
+📊 Flujo de Datos:
+
+Handler → Service → Strategy/Repository → Response
+
+🔄 Beneficio:
+
+Separación clara entre:
+- Lógica HTTP (handlers)
+- Lógica de negocio (services)
+- Acceso a datos (repositories)
+- Extracción específica por dominio (strategies)

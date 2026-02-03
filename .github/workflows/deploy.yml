@@ -1,0 +1,74 @@
+name: Deploy ScraperLab Backend to AWS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Lambda handler exists
+        run: |
+          if [ ! -f "lambda.js" ]; then
+            echo "❌ Error: lambda.js not found"
+            exit 1
+          fi
+          echo "✅ lambda.js found"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Verify S3 bucket exists
+        run: |
+          if aws s3 ls s3://scraperlab-backend 2>/dev/null; then
+            echo "✅ S3 bucket 'scraperlab-backend' exists"
+          else
+            echo "❌ S3 bucket 'scraperlab-backend' not found"
+            exit 1
+          fi
+
+      - name: Deploy to AWS Lambda
+        run: npx serverless deploy --stage prod --verbose
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
+          OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
+          OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+
+      - name: Get API Gateway URL
+        id: api_url
+        run: |
+          URL=$(npx serverless info --stage prod --verbose | grep -oP 'https://[^/]+\.execute-api\.[^/]+\.amazonaws\.com/prod' | head -1)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "🌐 API Gateway URL: $URL"
+
+      - name: Deployment Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "✅ ScraperLab Backend Deployed Successfully!"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📦 Bucket:   s3://scraperlab-backend"
+          echo "🚀 Lambda:   scraperlab-backend-prod-api"
+          echo "🌐 API URL:  ${{ steps.api_url.outputs.url }}"
+          echo "📊 Region:   us-east-1"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

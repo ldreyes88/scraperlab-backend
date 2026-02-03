@@ -1,0 +1,156 @@
+---
+description: Patrones para implementación de strategies de scraping
+globs: **/strategies/**/*.js
+alwaysApply: false
+---
+
+# Strategies - Patrón Strategy para Scraping
+
+## Arquitectura de Strategies
+
+```
+BaseStrategy (abstracto)
+├── ScraperAPIStrategy (proveedor)
+├── OxylabsStrategy (proveedor)
+└── BaseDomainStrategy
+    ├── FalabellaStrategy (dominio específico)
+    ├── ExitoStrategy (dominio específico)
+    └── MercadoLibreStrategy (dominio específico)
+```
+
+## Reglas de Implementación
+
+### 1. Herencia Obligatoria
+
+Todas las strategies deben heredar de una clase base:
+
+```javascript
+// ✅ Estrategia de Proveedor
+const BaseStrategy = require('./BaseStrategy');
+class ScraperAPIStrategy extends BaseStrategy { ... }
+
+// ✅ Estrategia de Dominio
+const BaseDomainStrategy = require('./domain/BaseDomainStrategy');
+class FalabellaStrategy extends BaseDomainStrategy { ... }
+```
+
+### 2. Método scrape() Requerido
+
+```javascript
+// ✅ CORRECTO
+class MyStrategy extends BaseDomainStrategy {
+  async scrape(url, domainConfig = {}) {
+    return this.getPriceData(url);
+  }
+  
+  async getPriceData(url) {
+    const html = await this.fetchHtml(url, { render: true });
+    // ... extracción de datos
+    return this.formatResponse({ ... });
+  }
+}
+```
+
+### 3. Uso de Métodos Base
+
+Las clases base proveen métodos útiles - úsalos:
+
+```javascript
+// De BaseDomainStrategy:
+this.fetchHtml(url, options)      // Obtener HTML
+this.formatResponse(data)          // Formatear respuesta estándar
+
+// Opciones de fetchHtml:
+{
+  render: true,    // Para SPAs (React, Next.js, etc)
+  premium: false   // Usar proxies premium
+}
+```
+
+### 4. Estrategia de Extracción: Cascada de Fallbacks
+
+```javascript
+// ✅ PATRÓN RECOMENDADO: Múltiples métodos de extracción
+async getPriceData(url) {
+  const html = await this.fetchHtml(url, { render: true });
+  const $ = cheerio.load(html);
+  
+  let currentPrice = null;
+  
+  // 1. Intentar data attributes
+  currentPrice = $('[data-price]').attr('data-price');
+  
+  // 2. FALLBACK: Selectores CSS
+  if (!currentPrice) {
+    currentPrice = $('.price-current').text() || 
+                   $('#price').text();
+  }
+  
+  // 3. FALLBACK: JSON embebido (Next.js, etc)
+  if (!currentPrice) {
+    const nextData = $('#__NEXT_DATA__').html();
+    if (nextData) {
+      const json = JSON.parse(nextData);
+      currentPrice = json.props.pageProps.price;
+    }
+  }
+  
+  // 4. Error si todos los métodos fallan
+  if (!currentPrice) {
+    throw new Error('No se pudo extraer el precio');
+  }
+  
+  return this.formatResponse({
+    success: true,
+    marketplace: 'Nombre',
+    currentPrice,
+    url
+  });
+}
+```
+
+### 5. Manejo de Errores en Strategies
+
+```javascript
+// ✅ CORRECTO - Capturar y retornar respuesta estructurada
+async scrape(url, config) {
+  try {
+    // Lógica de scraping
+    return this.formatResponse({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error(`Error en ${this.constructor.name}:`, error.message);
+    return this.formatResponse({
+      success: false,
+      error: error.message,
+      url
+    });
+  }
+}
+```
+
+### 6. Renderizado Condicional
+
+Usa `render: true` solo para SPAs (sitios JavaScript):
+
+```javascript
+// ✅ CORRECTO
+// Falabella, Éxito (Next.js/React) → render: true
+const html = await this.fetchHtml(url, { render: true });
+
+// MercadoLibre (SSR/HTML estático) → render: false o sin opción
+const html = await this.fetchHtml(url);
+```
+
+## StrategyFactory
+
+Para obtener la estrategia correcta:
+
+```javascript
+const strategy = StrategyFactory.getDomainStrategy(domain, providerId);
+const result = await strategy.scrape(url, config);
+```
+
+El Factory maneja la lógica de selección automáticamente.

@@ -1,0 +1,81 @@
+service: scraperlab-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: us-east-1
+  memorySize: 1024
+  timeout: 28
+  stage: ${opt:stage, 'prod'}
+
+  deploymentBucket:
+    name: scraperlab-backend
+    blockPublicAccess: true
+  
+  environment:
+    PROVIDERS_TABLE_NAME: ScraperLab-Providers
+    DOMAINS_TABLE_NAME: ScraperLab-Domains
+    PROCESS_TABLE_NAME: ScraperLab-Process
+    USERS_TABLE_NAME: ScraperLab-Users
+    NODE_ENV: ${self:custom.stages.${self:provider.stage}.nodeEnv, 'production'}
+    STAGE: ${self:provider.stage}
+    
+    # API Keys para scrapers
+    SCRAPER_API_KEY: ${env:SCRAPER_API_KEY}
+    OXYLABS_USERNAME: ${env:OXYLABS_USERNAME}
+    OXYLABS_PASSWORD: ${env:OXYLABS_PASSWORD}
+  
+  iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - dynamodb:Query
+      - dynamodb:Scan
+      - dynamodb:GetItem
+      - dynamodb:PutItem
+      - dynamodb:UpdateItem
+      - dynamodb:DeleteItem
+      - dynamodb:BatchGetItem
+      - dynamodb:BatchWriteItem
+    Resource:
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PROVIDERS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DOMAINS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DOMAINS_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PROCESS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PROCESS_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE_NAME}/index/*
+
+functions:
+  api:
+    handler: lambda.handler
+    timeout: 28
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Api-Key
+              - Authorization
+            allowCredentials: false
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Api-Key
+              - Authorization
+            allowCredentials: false
+
+custom:
+  stages:
+    dev:
+      nodeEnv: development
+    prod:
+      nodeEnv: production

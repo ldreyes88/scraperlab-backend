@@ -1,0 +1,80 @@
+---
+description: Arquitectura y convenciones generales de ScraperLab Backend
+alwaysApply: true
+---
+
+# ScraperLab Backend - Arquitectura y Convenciones
+
+## Stack Tecnológico
+- Node.js 22.x con Express
+- AWS Lambda + API Gateway (Serverless Framework)
+- DynamoDB para persistencia
+- Cheerio para web scraping
+
+## Arquitectura en Capas
+
+```
+handlers/     → Controladores de rutas (validación, respuesta HTTP)
+services/     → Lógica de negocio y orquestación
+repositories/ → Acceso a datos (DynamoDB)
+strategies/   → Implementaciones de scraping (Patrón Strategy)
+```
+
+### Flujo de Datos
+`Handler → Service → Strategy/Repository → Response`
+
+## Estructura de Respuestas
+
+Todas las respuestas JSON deben seguir este formato:
+
+```javascript
+// ✅ Éxito
+{
+  success: true,
+  data: {...},
+  metadata: {
+    responseTime: 1234,
+    timestamp: '2024-01-01T00:00:00.000Z'
+  }
+}
+
+// ❌ Error
+{
+  success: false,
+  error: 'Mensaje descriptivo del error'
+}
+```
+
+## Manejo de Errores
+
+- Handlers: Validación de entrada, respuestas HTTP
+- Services: try/catch y propagación de errores
+- Usa `next(error)` en handlers para delegar al errorHandler
+- Todos los errores deben incluir mensajes descriptivos en español
+
+```javascript
+// ✅ CORRECTO
+if (!url) {
+  return res.status(400).json({
+    success: false,
+    error: 'Campo requerido: url'
+  });
+}
+
+// ❌ INCORRECTO
+if (!url) throw new Error('Missing url');
+```
+
+## Variables de Entorno
+
+Siempre usar `process.env` para configuración sensible:
+- `PROVIDERS_TABLE_NAME`, `DOMAINS_TABLE_NAME`, `PROCESS_TABLE_NAME`
+- `SCRAPER_API_KEY`, `OXYLABS_USERNAME`, `OXYLABS_PASSWORD`
+- `STAGE`, `NODE_ENV`
+
+## Naming Conventions
+
+- Archivos: `PascalCase.js` para clases, `camelCase.js` para utilidades
+- Funciones: `camelCase`
+- Constantes: `UPPER_SNAKE_CASE`
+- Clases y módulos: `PascalCase`
