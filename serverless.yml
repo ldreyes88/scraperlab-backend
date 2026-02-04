@@ -1,6 +1,6 @@
 service: scraperlab-backend
 
-frameworkVersion: '4'
+frameworkVersion: '3'
 
 provider:
   name: aws
