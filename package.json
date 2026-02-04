@@ -2,14 +2,21 @@
   "name": "scraperlab-backend",
   "version": "1.0.0",
   "description": "Backend centralizado para gestión de scraping por dominios",
-  "main": "lambda.js",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
+    "deploy": "serverless deploy --stage prod",
+    "deploy-dev": "serverless deploy --stage dev",
     "start": "node lambda.js",
     "dev": "nodemon server.js",
     "logs": "serverless logs -f api --tail",
     "remove": "serverless remove",
     "init:providers": "node scripts/initProviders.js"
   },
+  
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -30,6 +37,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
-    "serverless": "^3.39.0"
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.3"
   }
 }
