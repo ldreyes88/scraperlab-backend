@@ -54,6 +54,11 @@ jobs:
           SCRAPER_API_KEY: ${{ secrets.SCRAPER_API_KEY }}
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+          COGNITO_CLIENT_SECRET: ${{ secrets.COGNITO_CLIENT_SECRET }}
+          COGNITO_DOMAIN: ${{ secrets.COGNITO_DOMAIN }}
+          COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
 
       - name: Get API Gateway URL
         id: api_url
