@@ -5,7 +5,7 @@ const ProcessRepository = require('../repositories/ProcessRepository');
 const { extractDomain } = require('../utils/helpers');
 
 class ScraperService {
-  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail') {
+  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null) {
     const startTime = Date.now();
     const domain = extractDomain(url);
     
@@ -34,13 +34,16 @@ class ScraperService {
 
       const responseTime = Date.now() - startTime;
 
-      // 4. Guardar log con información del tipo de scraping
+      // 4. Guardar log con información del tipo de scraping y usuario
       if (saveLog) {
         await ProcessRepository.create({
           url,
           domainId: domain,
           scraperProvider: domainConfig.providerId,
-          scrapeType, // Guardar el tipo de scraping
+          scrapeType,
+          processType: 'simple',
+          userId,
+          userEmail,
           success: true,
           responseTime,
           data: result,
@@ -68,6 +71,9 @@ class ScraperService {
           url,
           domainId: domain,
           scrapeType,
+          processType: 'simple',
+          userId,
+          userEmail,
           success: false,
           responseTime,
           error: error.message,

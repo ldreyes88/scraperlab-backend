@@ -61,6 +61,7 @@ app.put('/api/users/:userId/status', verifyToken, requireRole(['admin']), usersH
 // 🔧 Scraping endpoints (protegidos - permite JWT o API key)
 app.post('/api/scrape', verifyAuth, scraperHandler.scrapeUrl);
 app.post('/api/scrape/batch', verifyAuth, scraperHandler.scrapeBatch);
+app.post('/api/scrape/batch/create', verifyAuth, scraperHandler.createBatch);
 app.post('/api/scrape/test', verifyAuth, scraperHandler.testScrape);
 
 // 🏭 Providers endpoints (solo admin)
@@ -83,6 +84,7 @@ app.put('/api/domains/:domainId/toggle', verifyToken, requireRole(['admin']), do
 
 // 📊 Process endpoints (admin y usuarios pueden ver sus propios logs)
 app.get('/api/process', verifyToken, requireRole(['admin', 'user']), processHandler.getLogs);
+app.get('/api/process/:processId/details', verifyToken, requireRole(['admin', 'user']), processHandler.getBatchDetails);
 app.get('/api/process/domain/:domainId', verifyToken, requireRole(['admin', 'user']), processHandler.getLogsByDomain);
 app.get('/api/process/stats', verifyToken, requireRole(['admin']), processHandler.getStats);
 app.get('/api/process/stats/domain/:domainId', verifyToken, requireRole(['admin']), processHandler.getDomainStats);

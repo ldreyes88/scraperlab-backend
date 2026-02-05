@@ -116,18 +116,17 @@ const createUser = async (req, res) => {
     // Crear en Cognito primero
     const cognitoResult = await cognitoService.signUp(email, password, metadata);
 
-    // Si el usuario tiene rol admin o api_user, actualizar en Cognito
-    if (role && role !== 'user') {
-      await cognitoService.updateUserAttributes(email, {
-        'custom:role': role
-      });
-    }
+    // Establecer el rol en Cognito (custom:role) para todos los usuarios
+    const userRole = role || 'user';
+    await cognitoService.updateUserAttributes(email, {
+      'custom:role': userRole
+    });
 
     // Crear en DynamoDB
     const user = await userService.createUser({
       userId: cognitoResult.userSub,
       email,
-      role: role || 'user',
+      role: userRole,
       metadata
     });
 

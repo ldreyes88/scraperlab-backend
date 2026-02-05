@@ -30,6 +30,11 @@ const signup = async (req, res) => {
     // Registrar en Cognito
     const cognitoResult = await cognitoService.signUp(email, password, { name });
 
+    // Establecer el rol por defecto en Cognito (custom:role)
+    await cognitoService.updateUserAttributes(email, {
+      'custom:role': 'user'
+    });
+
     // Crear usuario en DynamoDB
     const user = await userService.createUser({
       userId: cognitoResult.userSub,
@@ -87,10 +92,21 @@ const login = async (req, res) => {
       dbUser = await userService.getUserById(userInfo.sub);
     } catch (error) {
       // Si el usuario no existe en DynamoDB, crearlo
+      const defaultRole = userInfo.customRole || 'user';
+      
+      // Asegurarse de que el custom:role esté en Cognito
+      try {
+        await cognitoService.updateUserAttributes(userInfo.email, {
+          'custom:role': defaultRole
+        });
+      } catch (cognitoError) {
+        console.warn('⚠️ Error actualizando custom:role en login:', cognitoError.message);
+      }
+      
       dbUser = await userService.createUser({
         userId: userInfo.sub,
         email: userInfo.email,
-        role: userInfo.customRole || 'user'
+        role: defaultRole
       });
     }
 
@@ -379,10 +395,22 @@ const oauthCallback = async (req, res) => {
     try {
       dbUser = await userService.getUserById(userInfo.sub);
     } catch (error) {
+      // Usuario nuevo desde OAuth, establecer rol por defecto
+      const defaultRole = userInfo.customRole || 'user';
+      
+      // Asegurarse de que el custom:role esté en Cognito
+      try {
+        await cognitoService.updateUserAttributes(userInfo.email, {
+          'custom:role': defaultRole
+        });
+      } catch (cognitoError) {
+        console.warn('⚠️ Error actualizando custom:role para usuario OAuth:', cognitoError.message);
+      }
+      
       dbUser = await userService.createUser({
         userId: userInfo.sub,
         email: userInfo.email,
-        role: userInfo.customRole || 'user',
+        role: defaultRole,
         metadata: {
           oauthProvider: true
         }
