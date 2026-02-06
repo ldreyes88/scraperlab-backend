@@ -23,7 +23,7 @@ class BaseStrategy {
         headers: config.headers || {},
         params: config.params || {},
         data: config.data || null,
-        timeout: config.timeout || 60000,
+        timeout: config.timeout || parseInt(process.env.HTTP_TIMEOUT) || 150000,
         auth: config.auth || null
       });
 

@@ -49,7 +49,7 @@ class ScraperAPIStrategy extends BaseStrategy {
     // Headers personalizados
     const config = {
       params,
-      timeout: 60000
+      timeout: parseInt(process.env.HTTP_TIMEOUT) || 150000
     };
 
     if (providerConfig.headers) {

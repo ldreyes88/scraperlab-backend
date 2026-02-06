@@ -12,6 +12,7 @@ const domainsHandler = require('./src/handlers/domains');
 const processHandler = require('./src/handlers/process');
 const authHandler = require('./src/handlers/auth');
 const usersHandler = require('./src/handlers/users');
+const clientsHandler = require('./src/handlers/clients');
 
 const app = express();
 
@@ -57,6 +58,17 @@ app.put('/api/users/:userId/role', verifyToken, requireRole(['admin']), usersHan
 app.post('/api/users/:userId/api-key', verifyToken, requireRole(['admin']), usersHandler.generateApiKey);
 app.delete('/api/users/:userId/api-key', verifyToken, requireRole(['admin']), usersHandler.revokeApiKey);
 app.put('/api/users/:userId/status', verifyToken, requireRole(['admin']), usersHandler.toggleUserStatus);
+
+// 🏢 Clients endpoints (solo admin)
+app.get('/api/clients', verifyToken, requireRole(['admin']), clientsHandler.getAllClients);
+app.get('/api/clients/user/:userEmail', verifyToken, requireRole(['admin']), clientsHandler.getClientsByUser);
+app.get('/api/clients/:clientId', verifyToken, requireRole(['admin']), clientsHandler.getClientById);
+app.post('/api/clients', verifyToken, requireRole(['admin']), clientsHandler.createClient);
+app.put('/api/clients/:clientId', verifyToken, requireRole(['admin']), clientsHandler.updateClient);
+app.delete('/api/clients/:clientId', verifyToken, requireRole(['admin']), clientsHandler.deleteClient);
+app.post('/api/clients/:clientId/users', verifyToken, requireRole(['admin']), clientsHandler.addUserToClient);
+app.delete('/api/clients/:clientId/users/:userEmail', verifyToken, requireRole(['admin']), clientsHandler.removeUserFromClient);
+app.put('/api/clients/:clientId/toggle', verifyToken, requireRole(['admin']), clientsHandler.toggleClientStatus);
 
 // 🔧 Scraping endpoints (protegidos - permite JWT o API key)
 app.post('/api/scrape', verifyAuth, scraperHandler.scrapeUrl);
