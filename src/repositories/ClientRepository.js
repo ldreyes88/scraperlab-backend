@@ -1,206 +1,254 @@
-const AWS = require('aws-sdk');
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
-
-const TABLE_NAME = process.env.CLIENTS_TABLE_NAME || 'ScraperLab-Clients';
+const { dynamoDB, TABLES } = require('../config/database');
+const { GetCommand, PutCommand, ScanCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 
 class ClientRepository {
   /**
    * Obtener todos los clientes
    */
-  async getAllClients() {
-    const params = {
-      TableName: TABLE_NAME
-    };
-
-    const result = await dynamoDB.scan(params).promise();
-    return result.Items || [];
+  static async getAllClients() {
+    try {
+      const result = await dynamoDB.send(
+        new ScanCommand({
+          TableName: TABLES.CLIENTS
+        })
+      );
+      return result.Items || [];
+    } catch (error) {
+      console.error('Error obteniendo clientes:', error);
+      throw error;
+    }
   }
 
   /**
    * Obtener un cliente por ID
    */
-  async getClientById(clientId) {
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId }
-    };
-
-    const result = await dynamoDB.get(params).promise();
-    return result.Item;
+  static async getClientById(clientId) {
+    try {
+      const result = await dynamoDB.send(
+        new GetCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId }
+        })
+      );
+      return result.Item || null;
+    } catch (error) {
+      console.error('Error obteniendo cliente:', error);
+      throw error;
+    }
   }
 
   /**
    * Crear un nuevo cliente
    */
-  async createClient(clientData) {
-    const now = new Date().toISOString();
-    
-    const client = {
-      ...clientData,
-      createdAt: now,
-      updatedAt: now
-    };
+  static async createClient(clientData) {
+    try {
+      const now = new Date().toISOString();
 
-    const params = {
-      TableName: TABLE_NAME,
-      Item: client,
-      ConditionExpression: 'attribute_not_exists(clientId)'
-    };
+      const client = {
+        ...clientData,
+        createdAt: now,
+        updatedAt: now
+      };
 
-    await dynamoDB.put(params).promise();
-    return client;
+      await dynamoDB.send(
+        new PutCommand({
+          TableName: TABLES.CLIENTS,
+          Item: client,
+          ConditionExpression: 'attribute_not_exists(clientId)'
+        })
+      );
+
+      return client;
+    } catch (error) {
+      console.error('Error creando cliente:', error);
+      throw error;
+    }
   }
 
   /**
    * Actualizar un cliente
    */
-  async updateClient(clientId, updates) {
-    const now = new Date().toISOString();
-    
-    // Construir expresión de actualización dinámica
-    const updateExpressions = [];
-    const expressionAttributeNames = {};
-    const expressionAttributeValues = {};
-    
-    Object.keys(updates).forEach((key, index) => {
-      const placeholder = `#attr${index}`;
-      const valuePlaceholder = `:val${index}`;
-      updateExpressions.push(`${placeholder} = ${valuePlaceholder}`);
-      expressionAttributeNames[placeholder] = key;
-      expressionAttributeValues[valuePlaceholder] = updates[key];
-    });
-    
-    // Agregar updatedAt
-    updateExpressions.push('#updatedAt = :updatedAt');
-    expressionAttributeNames['#updatedAt'] = 'updatedAt';
-    expressionAttributeValues[':updatedAt'] = now;
+  static async updateClient(clientId, updates) {
+    try {
+      const now = new Date().toISOString();
 
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId },
-      UpdateExpression: `SET ${updateExpressions.join(', ')}`,
-      ExpressionAttributeNames: expressionAttributeNames,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ReturnValues: 'ALL_NEW'
-    };
+      // Construir expresión de actualización dinámica
+      const updateExpressions = [];
+      const expressionAttributeNames = {};
+      const expressionAttributeValues = {};
 
-    const result = await dynamoDB.update(params).promise();
-    return result.Attributes;
+      Object.keys(updates).forEach((key, index) => {
+        const placeholder = `#attr${index}`;
+        const valuePlaceholder = `:val${index}`;
+        updateExpressions.push(`${placeholder} = ${valuePlaceholder}`);
+        expressionAttributeNames[placeholder] = key;
+        expressionAttributeValues[valuePlaceholder] = updates[key];
+      });
+
+      // Agregar updatedAt
+      updateExpressions.push('#updatedAt = :updatedAt');
+      expressionAttributeNames['#updatedAt'] = 'updatedAt';
+      expressionAttributeValues[':updatedAt'] = now;
+
+      const result = await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId },
+          UpdateExpression: `SET ${updateExpressions.join(', ')}`,
+          ExpressionAttributeNames: expressionAttributeNames,
+          ExpressionAttributeValues: expressionAttributeValues,
+          ReturnValues: 'ALL_NEW'
+        })
+      );
+
+      return result.Attributes;
+    } catch (error) {
+      console.error('Error actualizando cliente:', error);
+      throw error;
+    }
   }
 
   /**
    * Eliminar un cliente
    */
-  async deleteClient(clientId) {
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId }
-    };
-
-    await dynamoDB.delete(params).promise();
+  static async deleteClient(clientId) {
+    try {
+      await dynamoDB.send(
+        new DeleteCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId }
+        })
+      );
+    } catch (error) {
+      console.error('Error eliminando cliente:', error);
+      throw error;
+    }
   }
 
   /**
    * Agregar usuario a cliente
    */
-  async addUserToClient(clientId, userEmail) {
-    // Primero obtener el cliente actual
-    const client = await this.getClientById(clientId);
-    
-    if (!client) {
-      throw new Error('Cliente no encontrado');
+  static async addUserToClient(clientId, userEmail) {
+    try {
+      // Primero obtener el cliente actual
+      const client = await this.getClientById(clientId);
+
+      if (!client) {
+        throw new Error('Cliente no encontrado');
+      }
+
+      // Crear el array actualizado de usuarios
+      const currentUsers = client.allowedUsers || [];
+
+      // Si el usuario ya existe, no agregarlo de nuevo
+      if (currentUsers.includes(userEmail)) {
+        return client;
+      }
+
+      const updatedUsers = [...currentUsers, userEmail];
+
+      const result = await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId },
+          UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
+          ExpressionAttributeValues: {
+            ':users': updatedUsers,
+            ':updatedAt': new Date().toISOString()
+          },
+          ReturnValues: 'ALL_NEW'
+        })
+      );
+
+      return result.Attributes;
+    } catch (error) {
+      console.error('Error agregando usuario a cliente:', error);
+      throw error;
     }
-
-    // Crear el array actualizado de usuarios
-    const currentUsers = client.allowedUsers || [];
-    
-    // Si el usuario ya existe, no agregarlo de nuevo
-    if (currentUsers.includes(userEmail)) {
-      return client;
-    }
-
-    const updatedUsers = [...currentUsers, userEmail];
-
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId },
-      UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':users': updatedUsers,
-        ':updatedAt': new Date().toISOString()
-      },
-      ReturnValues: 'ALL_NEW'
-    };
-
-    const result = await dynamoDB.update(params).promise();
-    return result.Attributes;
   }
 
   /**
    * Remover usuario de cliente
    */
-  async removeUserFromClient(clientId, userEmail) {
-    // Primero obtener el cliente actual
-    const client = await this.getClientById(clientId);
-    
-    if (!client) {
-      throw new Error('Cliente no encontrado');
+  static async removeUserFromClient(clientId, userEmail) {
+    try {
+      // Primero obtener el cliente actual
+      const client = await this.getClientById(clientId);
+
+      if (!client) {
+        throw new Error('Cliente no encontrado');
+      }
+
+      // Crear el array actualizado de usuarios sin el email a remover
+      const currentUsers = client.allowedUsers || [];
+      const updatedUsers = currentUsers.filter(email => email !== userEmail);
+
+      const result = await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId },
+          UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
+          ExpressionAttributeValues: {
+            ':users': updatedUsers,
+            ':updatedAt': new Date().toISOString()
+          },
+          ReturnValues: 'ALL_NEW'
+        })
+      );
+
+      return result.Attributes;
+    } catch (error) {
+      console.error('Error removiendo usuario de cliente:', error);
+      throw error;
     }
-
-    // Crear el array actualizado de usuarios sin el email a remover
-    const currentUsers = client.allowedUsers || [];
-    const updatedUsers = currentUsers.filter(email => email !== userEmail);
-
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId },
-      UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':users': updatedUsers,
-        ':updatedAt': new Date().toISOString()
-      },
-      ReturnValues: 'ALL_NEW'
-    };
-
-    const result = await dynamoDB.update(params).promise();
-    return result.Attributes;
   }
 
   /**
    * Obtener clientes por usuario
    */
-  async getClientsByUser(userEmail) {
-    const params = {
-      TableName: TABLE_NAME
-    };
+  static async getClientsByUser(userEmail) {
+    try {
+      const result = await dynamoDB.send(
+        new ScanCommand({
+          TableName: TABLES.CLIENTS
+        })
+      );
+      const clients = result.Items || [];
 
-    const result = await dynamoDB.scan(params).promise();
-    const clients = result.Items || [];
-    
-    // Filtrar clientes que contienen al usuario
-    return clients.filter(client => 
-      client.allowedUsers && client.allowedUsers.includes(userEmail)
-    );
+      // Filtrar clientes que contienen al usuario
+      return clients.filter(client =>
+        client.allowedUsers && client.allowedUsers.includes(userEmail)
+      );
+    } catch (error) {
+      console.error('Error obteniendo clientes por usuario:', error);
+      throw error;
+    }
   }
 
   /**
    * Toggle estado activo de un cliente
    */
-  async toggleClientStatus(clientId, isActive) {
-    const params = {
-      TableName: TABLE_NAME,
-      Key: { clientId },
-      UpdateExpression: 'SET isActive = :isActive, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':isActive': isActive,
-        ':updatedAt': new Date().toISOString()
-      },
-      ReturnValues: 'ALL_NEW'
-    };
+  static async toggleClientStatus(clientId, isActive) {
+    try {
+      const result = await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.CLIENTS,
+          Key: { clientId },
+          UpdateExpression: 'SET isActive = :isActive, updatedAt = :updatedAt',
+          ExpressionAttributeValues: {
+            ':isActive': isActive,
+            ':updatedAt': new Date().toISOString()
+          },
+          ReturnValues: 'ALL_NEW'
+        })
+      );
 
-    const result = await dynamoDB.update(params).promise();
-    return result.Attributes;
+      return result.Attributes;
+    } catch (error) {
+      console.error('Error cambiando estado del cliente:', error);
+      throw error;
+    }
   }
 }
 
-module.exports = new ClientRepository();
+module.exports = ClientRepository;
