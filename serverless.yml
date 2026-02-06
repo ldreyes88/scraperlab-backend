@@ -68,6 +68,7 @@ functions:
   api:
     handler: lambda.handler
     # timeout heredado de provider (180s)
+    url: true  # Function URL: bypass API Gateway 29s limit
     events:
       - http:
           path: /{proxy+}

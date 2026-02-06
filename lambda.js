@@ -7,7 +7,7 @@ const handler = serverless(app, {
     console.log('📥 Lambda request:', {
       method: request.method,
       url: request.url,
-      path: event.path,
+      path: event.path || event.rawPath,  // API Gateway v1 || Function URL/v2
       stage: process.env.STAGE
     });
   },
