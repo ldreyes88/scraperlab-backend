@@ -130,9 +130,27 @@ const login = async (req, res) => {
   } catch (error) {
     console.error('Error en login:', error);
     
+    // Usuario no confirmado - necesita verificar email
+    if (error.message.includes('no confirmado') || error.message.includes('not confirmed')) {
+      return res.status(403).json({ 
+        error: 'UserNotConfirmedException',
+        message: 'Tu cuenta no está confirmada. Revisa tu email para confirmar tu cuenta.',
+        requiresConfirmation: true
+      });
+    }
+
+    // Error de auth flow no habilitado en Cognito
+    if (error.message.includes('not supported') || error.message.includes('not enabled')) {
+      console.error('⚠️ AUTH FLOW ERROR: USER_PASSWORD_AUTH puede no estar habilitado en el App Client de Cognito');
+      return res.status(500).json({ 
+        error: 'ConfigurationError',
+        message: 'Error de configuración del servidor de autenticación'
+      });
+    }
+
     res.status(401).json({ 
       error: 'AuthenticationError',
-      message: 'Credenciales inválidas' 
+      message: error.message || 'Credenciales inválidas' 
     });
   }
 };
