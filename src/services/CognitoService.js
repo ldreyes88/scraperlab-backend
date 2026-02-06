@@ -1,6 +1,9 @@
 const axios = require('axios');
+const crypto = require('crypto');
 const { 
   CognitoIdentityProviderClient, 
+  SignUpCommand,
+  InitiateAuthCommand,
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
   AdminUserGlobalSignOutCommand
@@ -21,23 +24,60 @@ class CognitoService {
   }
 
   /**
+   * Calcular SecretHash requerido cuando el App Client tiene client secret
+   */
+  calculateSecretHash(username) {
+    return crypto
+      .createHmac('sha256', this.clientSecret)
+      .update(username + this.clientId)
+      .digest('base64');
+  }
+
+  /**
    * Registrar nuevo usuario en Cognito
-   * Nota: En producción, usar AWS SDK sería mejor, pero axios funciona bien
    */
   async signUp(email, password, attributes = {}) {
     try {
-      // En un entorno real, usarías AWS SDK:
-      // const cognito = new AWS.CognitoIdentityServiceProvider();
-      // return await cognito.signUp({...}).promise();
+      const userAttributes = [
+        { Name: 'email', Value: email }
+      ];
 
-      // Por ahora, documentamos el proceso
+      if (attributes.name) {
+        userAttributes.push({ Name: 'name', Value: attributes.name });
+      }
+
+      const params = {
+        ClientId: this.clientId,
+        Username: email,
+        Password: password,
+        UserAttributes: userAttributes
+      };
+
+      // Agregar SecretHash si hay client secret configurado
+      if (this.clientSecret) {
+        params.SecretHash = this.calculateSecretHash(email);
+      }
+
+      const command = new SignUpCommand(params);
+      const response = await this.cognitoClient.send(command);
+
       return {
-        userSub: 'temp-user-id', // Este sería el Cognito sub real
+        userSub: response.UserSub,
         email,
-        userConfirmed: false,
+        userConfirmed: response.UserConfirmed,
         message: 'Usuario registrado. Se envió email de confirmación.'
       };
     } catch (error) {
+      if (error.name === 'UsernameExistsException') {
+        throw new Error('El email ya está registrado');
+      }
+      if (error.name === 'InvalidPasswordException') {
+        throw new Error('La contraseña no cumple los requisitos de seguridad (mínimo 8 caracteres, mayúscula, minúscula, número y símbolo)');
+      }
+      if (error.name === 'InvalidParameterException') {
+        throw new Error(`Parámetro inválido: ${error.message}`);
+      }
+      console.error('Error detallado en signUp:', error);
       throw new Error(`Error en registro: ${error.message}`);
     }
   }
@@ -55,15 +95,42 @@ class CognitoService {
    */
   async signIn(email, password) {
     try {
-      // En producción: usar cognito.initiateAuth()
-      // Por ahora, retornamos estructura esperada
+      const params = {
+        AuthFlow: 'USER_PASSWORD_AUTH',
+        ClientId: this.clientId,
+        AuthParameters: {
+          USERNAME: email,
+          PASSWORD: password
+        }
+      };
+
+      // Agregar SecretHash si hay client secret configurado
+      if (this.clientSecret) {
+        params.AuthParameters.SECRET_HASH = this.calculateSecretHash(email);
+      }
+
+      const command = new InitiateAuthCommand(params);
+      const response = await this.cognitoClient.send(command);
+
+      const result = response.AuthenticationResult;
+
       return {
-        accessToken: 'access-token-here',
-        idToken: 'id-token-here',
-        refreshToken: 'refresh-token-here',
-        expiresIn: 3600
+        accessToken: result.AccessToken,
+        idToken: result.IdToken,
+        refreshToken: result.RefreshToken,
+        expiresIn: result.ExpiresIn
       };
     } catch (error) {
+      if (error.name === 'NotAuthorizedException') {
+        throw new Error('Credenciales inválidas');
+      }
+      if (error.name === 'UserNotConfirmedException') {
+        throw new Error('Usuario no confirmado. Revisa tu email para confirmar tu cuenta.');
+      }
+      if (error.name === 'UserNotFoundException') {
+        throw new Error('Credenciales inválidas');
+      }
+      console.error('Error detallado en signIn:', error);
       throw new Error(`Error en login: ${error.message}`);
     }
   }

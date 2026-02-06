@@ -58,6 +58,13 @@ const signup = async (req, res) => {
       });
     }
 
+    if (error.message.includes('requisitos de seguridad') || error.message.includes('Parámetro inválido')) {
+      return res.status(400).json({ 
+        error: 'ValidationError',
+        message: error.message 
+      });
+    }
+
     res.status(500).json({ 
       error: 'InternalServerError',
       message: 'Error registrando usuario' 

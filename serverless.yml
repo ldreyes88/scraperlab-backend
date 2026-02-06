@@ -43,6 +43,13 @@ provider:
   iamRoleStatements:
   - Effect: Allow
     Action:
+      - cognito-idp:AdminGetUser
+      - cognito-idp:AdminUpdateUserAttributes
+      - cognito-idp:AdminUserGlobalSignOut
+    Resource:
+      - arn:aws:cognito-idp:${self:provider.region}:*:userpool/*
+  - Effect: Allow
+    Action:
       - dynamodb:Query
       - dynamodb:Scan
       - dynamodb:GetItem
