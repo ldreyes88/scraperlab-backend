@@ -2,6 +2,8 @@ service: scraperlab-backend
 
 frameworkVersion: '3'
 
+useDotenv: true
+
 provider:
   name: aws
   runtime: nodejs22.x
@@ -76,7 +78,8 @@ functions:
   api:
     handler: lambda.handler
     # timeout heredado de provider (180s)
-    url: true  # Function URL: bypass API Gateway 29s limit
+    url:
+      authorizer: none  # Function URL pública: bypass API Gateway 29s limit
     events:
       - http:
           path: /{proxy+}
