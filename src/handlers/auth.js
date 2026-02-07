@@ -30,6 +30,9 @@ const signup = async (req, res) => {
     // Registrar en Cognito
     const cognitoResult = await cognitoService.signUp(email, password, { name });
 
+    // Auto-confirmar usuario (evita depender del email de Cognito)
+    await cognitoService.adminConfirmUser(email);
+
     // Establecer el rol por defecto en Cognito (custom:role)
     await cognitoService.updateUserAttributes(email, {
       'custom:role': 'user'
@@ -44,9 +47,9 @@ const signup = async (req, res) => {
     });
 
     res.status(201).json({
-      message: 'Usuario registrado exitosamente. Verifica tu email para activar tu cuenta.',
+      message: 'Usuario registrado exitosamente.',
       user,
-      requiresConfirmation: !cognitoResult.userConfirmed
+      requiresConfirmation: false
     });
   } catch (error) {
     console.error('Error en signup:', error);
@@ -90,8 +93,9 @@ const login = async (req, res) => {
     // Autenticar con Cognito
     const tokens = await cognitoService.signIn(email, password);
 
-    // Obtener info del usuario desde Cognito
-    const userInfo = await cognitoService.getUserInfo(tokens.accessToken);
+    // Obtener info del usuario decodificando el ID Token
+    // (el access token de InitiateAuth no es compatible con /oauth2/userInfo)
+    const userInfo = cognitoService.getUserInfoFromIdToken(tokens.idToken);
 
     // Obtener datos adicionales de DynamoDB
     let dbUser;

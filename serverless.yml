@@ -44,6 +44,7 @@ provider:
   - Effect: Allow
     Action:
       - cognito-idp:AdminGetUser
+      - cognito-idp:AdminConfirmSignUp
       - cognito-idp:AdminUpdateUserAttributes
       - cognito-idp:AdminUserGlobalSignOut
     Resource:

@@ -4,6 +4,7 @@ const {
   CognitoIdentityProviderClient, 
   SignUpCommand,
   InitiateAuthCommand,
+  AdminConfirmSignUpCommand,
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
   AdminUserGlobalSignOutCommand
@@ -83,11 +84,23 @@ class CognitoService {
   }
 
   /**
-   * Confirmar registro de usuario
+   * Auto-confirmar usuario desde el backend (Admin)
+   * Útil cuando no se quiere depender del email de confirmación
    */
-  async confirmSignUp(username, confirmationCode) {
-    // AWS SDK: cognito.confirmSignUp({...}).promise();
-    return { success: true };
+  async adminConfirmUser(email) {
+    try {
+      const command = new AdminConfirmSignUpCommand({
+        UserPoolId: this.userPoolId,
+        Username: email
+      });
+
+      await this.cognitoClient.send(command);
+      console.log(`✅ Usuario auto-confirmado: ${email}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error auto-confirmando usuario:', error);
+      throw new Error(`Error confirmando usuario: ${error.message}`);
+    }
   }
 
   /**
@@ -166,7 +179,30 @@ class CognitoService {
   }
 
   /**
-   * Obtener información del usuario actual desde el token
+   * Obtener información del usuario decodificando el ID Token (JWT)
+   * Funciona con tokens de InitiateAuth y OAuth2 flows
+   */
+  getUserInfoFromIdToken(idToken) {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(idToken.split('.')[1], 'base64').toString()
+      );
+
+      return {
+        sub: payload.sub,
+        email: payload.email,
+        emailVerified: payload.email_verified,
+        username: payload['cognito:username'] || payload.email,
+        customRole: payload['custom:role']
+      };
+    } catch (error) {
+      throw new Error(`Error decodificando ID token: ${error.message}`);
+    }
+  }
+
+  /**
+   * Obtener información del usuario desde el endpoint OAuth2 /userInfo
+   * Solo funciona con access tokens obtenidos a través del flujo OAuth2 (hosted UI)
    */
   async getUserInfo(accessToken) {
     try {
