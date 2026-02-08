@@ -18,7 +18,11 @@ class ClaroDetailStrategy extends BaseDomainStrategy {
         console.log(`[Claro] Intento ${currentAttempt} para ${url}`);
 
         // Configuración de provider viene exclusivamente de la BD (providerConfig)
-        const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
+        const providerOpts = {
+          ...domainConfig.providerConfig,
+          wait_for_selector: '.priceNowFP'
+        };
+        const html = await this.fetchHtml(url, providerOpts);
 
         const $ = cheerio.load(html);
 
@@ -32,7 +36,7 @@ class ClaroDetailStrategy extends BaseDomainStrategy {
         }
 
         let currentPriceStr = $('.priceNowFP').first().text();
-        let originalPriceStr = $('.priceBeforeFP').first().text();
+        let originalPriceStr = $('.priceBeforeCrossed').first().text() || $('.priceBeforeFP').first().text();
 
         // FALLBACK: Extraer de __NEXT_DATA__
         if (!currentPriceStr || currentPriceStr === '') {
