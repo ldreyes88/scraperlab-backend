@@ -26,10 +26,6 @@ class StrategyFactory {
   static domainStrategiesByType = {
     'mercadolibre.com.co': {
       detail: MercadoLibreDetailStrategy,
-      default: MercadoLibreDetailStrategy // Alias para retrocompatibilidad
-    },
-    'mercadolibre.com': {
-      detail: MercadoLibreDetailStrategy,
       default: MercadoLibreDetailStrategy
     },
     'exito.com': {
@@ -56,15 +52,15 @@ class StrategyFactory {
       detail: IShopDetailStrategy,
       default: IShopDetailStrategy
     },
-    'claro.com.co': {
-      detail: ClaroDetailStrategy,
-      default: ClaroDetailStrategy
-    },
     'mac-center.com': {
       detail: MacCenterDetailStrategy,
       default: MacCenterDetailStrategy
     },
-    'movistar.com.co': {
+    'tienda.claro.com.co': {
+      detail: ClaroDetailStrategy,
+      default: ClaroDetailStrategy
+    },
+    'tienda.movistar.com.co': {
       detail: MovistarDetailStrategy,
       default: MovistarDetailStrategy
     },
