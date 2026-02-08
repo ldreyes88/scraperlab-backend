@@ -43,7 +43,7 @@ app.get('/api/auth/oauth/url', authHandler.getOAuthUrl);
 app.post('/api/auth/oauth/callback', authHandler.oauthCallback);
 
 // 🔐 Auth endpoints (protegidos)
-app.get('/api/auth/me', verifyAuth, authHandler.me);
+app.get('/api/auth/me', verifyAuth, authHandler.me); // JWT o API key (usado por clientes externos como oferty)
 app.post('/api/auth/logout', verifyToken, authHandler.logout);
 app.post('/api/auth/change-password', verifyToken, authHandler.changePassword);
 

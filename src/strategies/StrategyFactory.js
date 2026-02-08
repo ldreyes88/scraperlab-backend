@@ -10,6 +10,13 @@ const FalabellaStrategy = require('./domain/FalabellaStrategy');
 const MercadoLibreDetailStrategy = require('./domain/mercadolibre.com.co/MercadoLibreDetailStrategy');
 const ExitoDetailStrategy = require('./domain/exito.com/ExitoDetailStrategy');
 const FalabellaDetailStrategy = require('./domain/falabella.com.co/FalabellaDetailStrategy');
+const AlkostoDetailStrategy = require('./domain/alkosto.com/AlkostoDetailStrategy');
+const AlkomprarDetailStrategy = require('./domain/alkomprar.com/AlkomprarDetailStrategy');
+const KtronixDetailStrategy = require('./domain/ktronix.com/KtronixDetailStrategy');
+const IShopDetailStrategy = require('./domain/ishop.com.co/IShopDetailStrategy');
+const ClaroDetailStrategy = require('./domain/claro.com.co/ClaroDetailStrategy');
+const MacCenterDetailStrategy = require('./domain/maccenter.com.co/MacCenterDetailStrategy');
+const MovistarDetailStrategy = require('./domain/movistar.com.co/MovistarDetailStrategy');
 const PequenoMundoDetailStrategy = require('./domain/pequenomundo.com/PequenoMundoDetailStrategy');
 const PequenoMundoSearchStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchStrategy');
 const PequenoMundoSearchSpecificStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchSpecificStrategy');
@@ -46,6 +53,34 @@ class StrategyFactory {
     'falabella.com.co': {
       detail: FalabellaDetailStrategy,
       default: FalabellaDetailStrategy
+    },
+    'alkosto.com': {
+      detail: AlkostoDetailStrategy,
+      default: AlkostoDetailStrategy
+    },
+    'alkomprar.com': {
+      detail: AlkomprarDetailStrategy,
+      default: AlkomprarDetailStrategy
+    },
+    'ktronix.com': {
+      detail: KtronixDetailStrategy,
+      default: KtronixDetailStrategy
+    },
+    'ishop.com.co': {
+      detail: IShopDetailStrategy,
+      default: IShopDetailStrategy
+    },
+    'claro.com.co': {
+      detail: ClaroDetailStrategy,
+      default: ClaroDetailStrategy
+    },
+    'maccenter.com.co': {
+      detail: MacCenterDetailStrategy,
+      default: MacCenterDetailStrategy
+    },
+    'movistar.com.co': {
+      detail: MovistarDetailStrategy,
+      default: MovistarDetailStrategy
     },
     'pequenomundo.com': {
       detail: PequenoMundoDetailStrategy,
