@@ -11,11 +11,8 @@ class AlkomprarDetailStrategy extends BaseDomainStrategy {
   async getPriceData(url, domainConfig = {}) {
     let method = 'GAProductData-Extract';
     try {
-      // Alkomprar requiere renderizado para cargar los precios dinámicamente
-      const html = await this.fetchHtml(url, {
-        render: true,
-        ...domainConfig.providerConfig
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       const $ = cheerio.load(html);
 
       console.log(`[Alkomprar] HTML recibido: ${html.length} caracteres`);

@@ -1,12 +1,7 @@
 const ScraperAPIStrategy = require('./ScraperAPIStrategy');
 const OxylabsStrategy = require('./OxylabsStrategy');
 
-// Domain strategies (legacy - mantener para retrocompatibilidad temporal)
-const MercadoLibreStrategy = require('./domain/MercadoLibreStrategy');
-const ExitoStrategy = require('./domain/ExitoStrategy');
-const FalabellaStrategy = require('./domain/FalabellaStrategy');
-
-// Domain strategies by type (new architecture)
+// Domain strategies by type
 const MercadoLibreDetailStrategy = require('./domain/mercadolibre.com.co/MercadoLibreDetailStrategy');
 const ExitoDetailStrategy = require('./domain/exito.com/ExitoDetailStrategy');
 const FalabellaDetailStrategy = require('./domain/falabella.com.co/FalabellaDetailStrategy');
@@ -28,15 +23,6 @@ class StrategyFactory {
     'oxylabs': OxylabsStrategy
   };
 
-  static domainStrategies = {
-    // Mantener formato legacy para retrocompatibilidad
-    'mercadolibre.com.co': MercadoLibreStrategy,
-    'mercadolibre.com': MercadoLibreStrategy,
-    'exito.com': ExitoStrategy,
-    'falabella.com.co': FalabellaStrategy,
-  };
-
-  // Nuevo mapeo por dominio y tipo
   static domainStrategiesByType = {
     'mercadolibre.com.co': {
       detail: MercadoLibreDetailStrategy,
@@ -117,12 +103,6 @@ class StrategyFactory {
     const domainTypes = this.domainStrategiesByType[normalizedDomain];
     
     if (!domainTypes) {
-      // Fallback a formato legacy para retrocompatibilidad
-      const LegacyStrategyClass = this.domainStrategies[normalizedDomain];
-      if (LegacyStrategyClass) {
-        const providerStrategy = this.getStrategy(providerId);
-        return new LegacyStrategyClass(providerStrategy);
-      }
       throw new Error(`Dominio no soportado: ${domain}`);
     }
     
@@ -151,7 +131,7 @@ class StrategyFactory {
   }
 
   static getSupportedDomains() {
-    return Object.keys(this.domainStrategies);
+    return Object.keys(this.domainStrategiesByType);
   }
 }
 

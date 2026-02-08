@@ -5,15 +5,14 @@ const cheerio = require('cheerio');
 
 class ExitoStrategy extends BaseDomainStrategy {
   async scrape(url, domainConfig = {}) {
-    return this.getPriceData(url);
+    return this.getPriceData(url, domainConfig);
   }
 
-  async getPriceData(url) {
+  async getPriceData(url, domainConfig = {}) {
     let method = 'JSON-LD-Recursive';
     try {
-      const html = await this.fetchHtml(url, {
-        render: true
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       
       const $ = cheerio.load(html);
 

@@ -4,13 +4,13 @@ const PequenoMundoSearchStrategy = require('./PequenoMundoSearchStrategy');
 
 class PequenoMundoSearchSpecificStrategy extends PequenoMundoSearchStrategy {
   async scrape(url, domainConfig = {}) {
-    return this.getFirstResult(url);
+    return this.getFirstResult(url, domainConfig);
   }
 
-  async getFirstResult(url) {
+  async getFirstResult(url, domainConfig = {}) {
     try {
       // Reutilizar la lógica de búsqueda para obtener todos los resultados
-      const searchResponse = await this.getSearchResults(url);
+      const searchResponse = await this.getSearchResults(url, domainConfig);
 
       if (!searchResponse.success || !searchResponse.results || searchResponse.results.length === 0) {
         throw new Error('No se encontraron resultados en la búsqueda');

@@ -12,12 +12,8 @@ class IShopDetailStrategy extends BaseDomainStrategy {
     let method = 'AdobeAnalytics-Extract';
     try {
       // iShop no necesita render, es menos detectable sin él
-      const html = await this.fetchHtml(url, {
-        render: false,
-        premium: false,
-        country_code: 'co',
-        ...domainConfig.providerConfig
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       const $ = cheerio.load(html);
 
       console.log(`[iShop] HTML recibido: ${html.length} caracteres`);

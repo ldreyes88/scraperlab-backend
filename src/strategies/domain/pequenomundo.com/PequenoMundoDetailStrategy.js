@@ -5,19 +5,14 @@ const cheerio = require('cheerio');
 
 class PequenoMundoDetailStrategy extends BaseDomainStrategy {
   async scrape(url, domainConfig = {}) {
-    return this.getPriceData(url);
+    return this.getPriceData(url, domainConfig);
   }
 
-  async getPriceData(url) {
+  async getPriceData(url, domainConfig = {}) {
     let method = 'N/A';
     try {
-      // PequenoMundo: usar render con configuración básica
-      const html = await this.fetchHtml(url, {
-        render: true,
-        premium: false,
-        device_type: 'desktop',
-        wait: 1000 // Esperar 1 segundo para que cargue el contenido
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       
       const $ = cheerio.load(html);
 

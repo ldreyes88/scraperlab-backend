@@ -5,19 +5,14 @@ const cheerio = require('cheerio');
 
 class PequenoMundoSearchStrategy extends BaseDomainStrategy {
   async scrape(url, domainConfig = {}) {
-    return this.getSearchResults(url);
+    return this.getSearchResults(url, domainConfig);
   }
 
-  async getSearchResults(url) {
+  async getSearchResults(url, domainConfig = {}) {
     let method = 'CSS-Selectors';
     try {
-      // Obtener HTML de la página de búsqueda
-      const html = await this.fetchHtml(url, {
-        render: true,
-        premium: false,
-        device_type: 'desktop',
-        wait: 1500 // Esperar más tiempo para que carguen los resultados
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       
       const $ = cheerio.load(html);
 

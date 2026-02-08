@@ -12,10 +12,8 @@ class MovistarDetailStrategy extends BaseDomainStrategy {
     let method = 'CSS-StickyBar';
     try {
       // Movistar suele cargar bien con renderizado básico
-      const html = await this.fetchHtml(url, {
-        render: true,
-        ...domainConfig.providerConfig
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       const $ = cheerio.load(html);
 
       console.log(`[Movistar] HTML recibido: ${html.length} caracteres`);

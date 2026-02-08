@@ -17,15 +17,8 @@ class ClaroDetailStrategy extends BaseDomainStrategy {
       try {
         console.log(`[Claro] Intento ${currentAttempt} para ${url}`);
 
-        // Claro es una SPA (Next.js), requiere render + premium + wait
-        const html = await this.fetchHtml(url, {
-          render: true,
-          premium: true,
-          device_type: 'desktop',
-          wait: 8000,
-          wait_for_selector: '.priceNowFP',
-          ...domainConfig.providerConfig
-        });
+        // Configuración de provider viene exclusivamente de la BD (providerConfig)
+        const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
 
         const $ = cheerio.load(html);
 

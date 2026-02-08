@@ -11,11 +11,8 @@ class AlkostoDetailStrategy extends BaseDomainStrategy {
   async getPriceData(url, domainConfig = {}) {
     let method = 'GAProductData-Extract';
     try {
-      // Alkosto funciona bien con renderizado básico
-      const html = await this.fetchHtml(url, {
-        render: true,
-        ...domainConfig.providerConfig
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       const $ = cheerio.load(html);
 
       console.log(`[Alkosto] HTML recibido: ${html.length} caracteres`);

@@ -5,17 +5,14 @@ const cheerio = require('cheerio');
 
 class FalabellaStrategy extends BaseDomainStrategy {
   async scrape(url, domainConfig = {}) {
-    return this.getPriceData(url);
+    return this.getPriceData(url, domainConfig);
   }
 
-  async getPriceData(url) {
+  async getPriceData(url, domainConfig = {}) {
     let method = 'Selectors-NextData';
     try {
-      // Falabella es una SPA (Next.js), requiere render: true
-      // Solo se envían los parámetros configurados en el dominio más render
-      const html = await this.fetchHtml(url, {
-        render: true
-      });
+      // Configuración de provider viene exclusivamente de la BD (providerConfig)
+      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
       
       const $ = cheerio.load(html);
 
