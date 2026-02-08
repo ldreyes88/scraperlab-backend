@@ -133,7 +133,7 @@ class ProcessService {
         const prevResult = await ProcessDetailRepository.getByProcessId(processId, skipItems);
         if (prevResult.length === skipItems) {
           lastKey = {
-            logId: prevResult[prevResult.length - 1].logId,
+            detailId: prevResult[prevResult.length - 1].detailId,
             processId: processId
           };
         }
