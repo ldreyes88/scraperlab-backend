@@ -1,6 +1,7 @@
 // scraperlab-backend/src/strategies/domain/BaseDomainStrategy.js
 
 const cheerio = require('cheerio');
+const { nowColombiaISO } = require('../../utils/time');
 
 class BaseDomainStrategy {
   constructor(providerStrategy) {
@@ -82,7 +83,7 @@ class BaseDomainStrategy {
       },
       metadata: {
         method,
-        timestamp: new Date().toISOString(),
+        timestamp: nowColombiaISO(),
         url
       },
       error
@@ -117,7 +118,7 @@ class BaseDomainStrategy {
         totalResults: results.length,
         resultsExtracted: results.length,
         method,
-        timestamp: new Date().toISOString(),
+        timestamp: nowColombiaISO(),
         url
       },
       error
@@ -162,7 +163,7 @@ class BaseDomainStrategy {
       },
       metadata: {
         method,
-        timestamp: new Date().toISOString(),
+        timestamp: nowColombiaISO(),
         searchUrl: url
       },
       error

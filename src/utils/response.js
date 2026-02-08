@@ -1,9 +1,11 @@
+const { nowColombiaISO } = require('./time');
+
 const successResponse = (data, statusCode = 200) => ({
     statusCode,
     body: JSON.stringify({
       success: true,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: nowColombiaISO()
     })
   });
   
@@ -13,7 +15,7 @@ const successResponse = (data, statusCode = 200) => ({
       success: false,
       error: message,
       details,
-      timestamp: new Date().toISOString()
+      timestamp: nowColombiaISO()
     })
   });
   

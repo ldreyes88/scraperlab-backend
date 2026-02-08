@@ -1,6 +1,7 @@
 const { dynamoDB, TABLES } = require('../config/database');
 const { PutCommand, QueryCommand, ScanCommand, DeleteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
+const { nowColombiaISO, toColombiaDateKey } = require('../utils/time');
 
 class ProcessRepository {
   static async create(logData) {
@@ -13,7 +14,7 @@ class ProcessRepository {
         userId: logData.userId || null,
         userEmail: logData.userEmail || null,
         ...logData,
-        timestamp: logData.timestamp || new Date().toISOString(),
+        timestamp: logData.timestamp || nowColombiaISO(),
         ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60) // 90 días
       };
 
@@ -44,7 +45,7 @@ class ProcessRepository {
         failedCount: 0,
         userId: processData.userId,
         userEmail: processData.userEmail,
-        timestamp: new Date().toISOString(),
+        timestamp: nowColombiaISO(),
         ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60)
       };
 
@@ -201,57 +202,28 @@ class ProcessRepository {
         filteredItems = filteredItems.filter(item => item.processType === filters.processType);
       }
 
-      // Filtro por fecha (en memoria) - versión mejorada con zona horaria de Colombia
+      // Filtro por fecha (en memoria) - usa zona horaria de Colombia via time.js
       if (filters.from || filters.to) {
         const beforeFilter = filteredItems.length;
         
         filteredItems = filteredItems.filter(item => {
           if (!item.timestamp) return false;
           
-          // Normalizar el timestamp a fecha YYYY-MM-DD en zona horaria de Colombia (UTC-5)
-          let itemDate;
-          try {
-            // Parsear el timestamp como Date
-            const date = new Date(item.timestamp);
-            if (isNaN(date.getTime())) return false; // timestamp inválido
-            
-            // Convertir a hora de Colombia (UTC-5)
-            // Obtener timestamp en milisegundos y restar 5 horas
-            const colombiaOffset = -5 * 60 * 60 * 1000;
-            const colombiaDate = new Date(date.getTime() + colombiaOffset);
-            
-            // Extraer la fecha en formato YYYY-MM-DD usando UTC (que ahora representa hora de Colombia)
-            const year = colombiaDate.getUTCFullYear();
-            const month = String(colombiaDate.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(colombiaDate.getUTCDate()).padStart(2, '0');
-            itemDate = `${year}-${month}-${day}`;
-          } catch (error) {
-            // Si falla el parseo, intentar extraer directamente del string
-            const match = item.timestamp.match(/^(\d{4}-\d{2}-\d{2})/);
-            if (match) {
-              itemDate = match[1];
-            } else {
-              return false;
-            }
-          }
+          const itemDate = toColombiaDateKey(item.timestamp);
+          if (!itemDate) return false;
           
-          // Comparación de fechas
-          let matches = false;
           if (filters.from && filters.to) {
-            matches = itemDate >= filters.from && itemDate <= filters.to;
+            return itemDate >= filters.from && itemDate <= filters.to;
           } else if (filters.from) {
-            matches = itemDate >= filters.from;
+            return itemDate >= filters.from;
           } else if (filters.to) {
-            matches = itemDate <= filters.to;
-          } else {
-            matches = true;
+            return itemDate <= filters.to;
           }
-          
-          return matches;
+          return true;
         });
         
         const afterFilter = filteredItems.length;
-        console.log(`[ProcessRepository] Filtro de fecha (Colombia UTC-5): ${beforeFilter} -> ${afterFilter} items (from: ${filters.from}, to: ${filters.to})`);
+        console.log(`[ProcessRepository] Filtro de fecha (Colombia): ${beforeFilter} -> ${afterFilter} items (from: ${filters.from}, to: ${filters.to})`);
       }
 
       // Filtro por estado

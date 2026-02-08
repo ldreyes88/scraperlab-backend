@@ -1,5 +1,6 @@
 const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+const { nowColombiaISO } = require('../utils/time');
 
 class ProviderRepository {
   static async getById(providerId) {
@@ -35,8 +36,8 @@ class ProviderRepository {
     try {
       const item = {
         ...providerData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: nowColombiaISO(),
+        updatedAt: nowColombiaISO()
       };
 
       await dynamoDB.send(
@@ -64,7 +65,7 @@ class ProviderRepository {
         ...existing,
         ...updates,
         providerId, // No permitir cambiar el ID
-        updatedAt: new Date().toISOString()
+        updatedAt: nowColombiaISO()
       };
 
       await dynamoDB.send(

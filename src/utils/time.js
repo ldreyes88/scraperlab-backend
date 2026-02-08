@@ -1,72 +1,68 @@
-const {
-    COUNTRY_SITE
-} = require('./constants');
+/**
+ * Utilidades de tiempo con zona horaria de Colombia (America/Bogota, UTC-5)
+ * Centraliza toda la lógica de timestamps para que sean consistentes
+ */
 
-const SITE_MAP = {
-    CO: {
-        tz: 'America/Bogota',
-        offset: '-05:00',
-        locale: 'es-CO'
-    },
-    MX: {
-        tz: 'America/Mexico_City',
-        offset: '-06:00',
-        locale: 'es-MX'
-    },
-    AR: {
-        tz: 'America/Argentina/Buenos_Aires',
-        offset: '-03:00',
-        locale: 'es-AR'
-    },
-    CL: {
-        tz: 'America/Santiago',
-        offset: '-04:00',
-        locale: 'es-CL'
-    },
-    BR: {
-        tz: 'America/Sao_Paulo',
-        offset: '-03:00',
-        locale: 'pt-BR'
-    }
+const COLOMBIA = {
+  tz: 'America/Bogota',
+  offset: '-05:00',
+  locale: 'es-CO'
 };
 
-function getSite() {
-    return SITE_MAP[COUNTRY_SITE] || SITE_MAP.CO;
-}
-
+/**
+ * Formatea las partes de una fecha en zona horaria de Colombia
+ */
 function formatParts(date = new Date(), opts = {}) {
-    const {
-        tz
-    } = getSite();
-    const fmt = new Intl.DateTimeFormat('en-CA', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        ...opts
-    });
-    return Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: COLOMBIA.tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    ...opts
+  });
+  return Object.fromEntries(fmt.formatToParts(date).map(p => [p.type, p.value]));
 }
 
-function nowSiteISO(date = new Date()) {
-    const {
-        offset
-    } = getSite();
-    const p = formatParts(date);
-    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${offset}`;
+/**
+ * Retorna un ISO string con offset de Colombia
+ * Ejemplo: "2026-02-07T14:30:45-05:00"
+ */
+function nowColombiaISO(date = new Date()) {
+  const p = formatParts(date);
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}${COLOMBIA.offset}`;
 }
 
-function dayKeySite(date = new Date()) {
+/**
+ * Retorna la fecha actual en Colombia como YYYY-MM-DD
+ * Ejemplo: "2026-02-07"
+ */
+function dayKeyColombia(date = new Date()) {
+  const p = formatParts(date);
+  return `${p.year}-${p.month}-${p.day}`;
+}
+
+/**
+ * Convierte un timestamp ISO a fecha YYYY-MM-DD en zona horaria de Colombia
+ * Útil para filtros de fecha
+ */
+function toColombiaDateKey(isoString) {
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return null;
     const p = formatParts(date);
     return `${p.year}-${p.month}-${p.day}`;
+  } catch {
+    return null;
+  }
 }
 
 module.exports = {
-    nowSiteISO,
-    dayKeySite,
-    getSite
+  nowColombiaISO,
+  dayKeyColombia,
+  toColombiaDateKey,
+  COLOMBIA
 };

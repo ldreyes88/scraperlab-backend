@@ -1,6 +1,7 @@
 const { dynamoDB, TABLES } = require('../config/database');
 const { PutCommand, QueryCommand, BatchWriteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
+const { nowColombiaISO } = require('../utils/time');
 
 class ProcessDetailRepository {
   /**
@@ -11,7 +12,7 @@ class ProcessDetailRepository {
       const item = {
         detailId: uuidv4(),
         ...detailData,
-        timestamp: detailData.timestamp || new Date().toISOString(),
+        timestamp: detailData.timestamp || nowColombiaISO(),
         ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60) // 90 días
       };
 
@@ -39,7 +40,7 @@ class ProcessDetailRepository {
       }
 
       const results = [];
-      const timestamp = new Date().toISOString();
+      const timestamp = nowColombiaISO();
       const ttl = Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60);
 
       // DynamoDB BatchWrite solo permite 25 items por batch

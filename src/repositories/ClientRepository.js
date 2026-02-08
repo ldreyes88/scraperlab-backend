@@ -1,5 +1,6 @@
 const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const { nowColombiaISO } = require('../utils/time');
 
 class ClientRepository {
   /**
@@ -42,7 +43,7 @@ class ClientRepository {
    */
   static async createClient(clientData) {
     try {
-      const now = new Date().toISOString();
+      const now = nowColombiaISO();
 
       const client = {
         ...clientData,
@@ -70,7 +71,7 @@ class ClientRepository {
    */
   static async updateClient(clientId, updates) {
     try {
-      const now = new Date().toISOString();
+      const now = nowColombiaISO();
 
       // Construir expresión de actualización dinámica
       const updateExpressions = [];
@@ -154,7 +155,7 @@ class ClientRepository {
           UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
           ExpressionAttributeValues: {
             ':users': updatedUsers,
-            ':updatedAt': new Date().toISOString()
+            ':updatedAt': nowColombiaISO()
           },
           ReturnValues: 'ALL_NEW'
         })
@@ -190,7 +191,7 @@ class ClientRepository {
           UpdateExpression: 'SET allowedUsers = :users, updatedAt = :updatedAt',
           ExpressionAttributeValues: {
             ':users': updatedUsers,
-            ':updatedAt': new Date().toISOString()
+            ':updatedAt': nowColombiaISO()
           },
           ReturnValues: 'ALL_NEW'
         })
@@ -237,7 +238,7 @@ class ClientRepository {
           UpdateExpression: 'SET isActive = :isActive, updatedAt = :updatedAt',
           ExpressionAttributeValues: {
             ':isActive': isActive,
-            ':updatedAt': new Date().toISOString()
+            ':updatedAt': nowColombiaISO()
           },
           ReturnValues: 'ALL_NEW'
         })

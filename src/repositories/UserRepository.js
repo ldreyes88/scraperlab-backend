@@ -8,6 +8,7 @@ const {
   QueryCommand,
   ScanCommand
 } = require('@aws-sdk/lib-dynamodb');
+const { nowColombiaISO } = require('../utils/time');
 
 class UserRepository {
   constructor() {
@@ -67,7 +68,7 @@ class UserRepository {
    * Crear nuevo usuario
    */
   async createUser(userData) {
-    const now = new Date().toISOString();
+    const now = nowColombiaISO();
     
     const user = {
       userId: userData.userId, // Cognito sub
@@ -98,7 +99,7 @@ class UserRepository {
    * Actualizar usuario
    */
   async updateUser(userId, updates) {
-    const now = new Date().toISOString();
+    const now = nowColombiaISO();
     
     // Construir expresión de actualización dinámica
     const updateExpressions = [];
@@ -147,7 +148,7 @@ class UserRepository {
       Key: { userId: user.userId },
       UpdateExpression: 'SET apiKeyLastUsed = :lastUsed',
       ExpressionAttributeValues: {
-        ':lastUsed': new Date().toISOString()
+        ':lastUsed': nowColombiaISO()
       }
     };
 

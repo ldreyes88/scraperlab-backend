@@ -1,6 +1,7 @@
 const UserRepository = require('../repositories/UserRepository');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const { nowColombiaISO } = require('../utils/time');
 
 class UserService {
   constructor() {
@@ -89,7 +90,7 @@ class UserService {
     // Actualizar usuario con nueva API key
     const updatedUser = await this.userRepository.updateUser(userId, { 
       apiKey,
-      apiKeyCreatedAt: new Date().toISOString()
+      apiKeyCreatedAt: nowColombiaISO()
     });
 
     return {

@@ -3,6 +3,7 @@ const DomainConfigService = require('./DomainConfigService');
 const StrategyFactory = require('../strategies/StrategyFactory');
 const ProcessRepository = require('../repositories/ProcessRepository');
 const { extractDomain } = require('../utils/helpers');
+const { nowColombiaISO } = require('../utils/time');
 
 class ScraperService {
   static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null) {
@@ -47,7 +48,7 @@ class ScraperService {
           success: true,
           responseTime,
           data: result,
-          timestamp: new Date().toISOString()
+          timestamp: nowColombiaISO()
         });
       }
 
@@ -59,7 +60,7 @@ class ScraperService {
           provider: domainConfig.providerId,
           scrapeType,
           responseTime,
-          timestamp: new Date().toISOString()
+          timestamp: nowColombiaISO()
         }
       };
 
@@ -77,7 +78,7 @@ class ScraperService {
           success: false,
           responseTime,
           error: error.message,
-          timestamp: new Date().toISOString()
+          timestamp: nowColombiaISO()
         });
       }
 

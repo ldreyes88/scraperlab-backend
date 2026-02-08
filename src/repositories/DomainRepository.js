@@ -1,5 +1,6 @@
 const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, QueryCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const { nowColombiaISO } = require('../utils/time');
 
 /**
  * DomainRepository - Gestiona la configuración de dominios en DynamoDB
@@ -74,8 +75,8 @@ class DomainRepository {
         domainId,
         // Si no se especifica supportedTypes, usar ['detail'] por defecto (retrocompatibilidad)
         supportedTypes: configData.supportedTypes || existing?.supportedTypes || ['detail'],
-        createdAt: existing?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: existing?.createdAt || nowColombiaISO(),
+        updatedAt: nowColombiaISO()
       };
 
       await dynamoDB.send(

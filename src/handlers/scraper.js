@@ -4,7 +4,7 @@ const { isValidUrl } = require('../utils/helpers');
 
 exports.scrapeUrl = async (req, res, next) => {
   try {
-    const { url, scrapeType } = req.body;
+    const { url, scrapeType, saveLog } = req.body;
     const userId = req.body.userId || req.user?.userId;
     const userEmail = req.body.userEmail || req.user?.email;
 
@@ -33,7 +33,11 @@ exports.scrapeUrl = async (req, res, next) => {
       });
     }
 
-    const result = await ScraperService.scrapeUrl(url, true, type, userId, userEmail);
+    // saveLog: por defecto true. Clientes externos (ej: oferty) pueden enviar false
+    // cuando manejan su propio logging (ProcessDetail vinculado a un proceso padre)
+    const shouldSaveLog = saveLog !== false;
+
+    const result = await ScraperService.scrapeUrl(url, shouldSaveLog, type, userId, userEmail);
 
     res.json(result);
   } catch (error) {
