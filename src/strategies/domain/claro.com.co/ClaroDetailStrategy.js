@@ -18,11 +18,7 @@ class ClaroDetailStrategy extends BaseDomainStrategy {
         console.log(`[Claro] Intento ${currentAttempt} para ${url}`);
 
         // Configuración de provider viene exclusivamente de la BD (providerConfig)
-        const providerOpts = {
-          ...domainConfig.providerConfig,
-          wait_for_selector: '.priceNowFP'
-        };
-        const html = await this.fetchHtml(url, providerOpts);
+        const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
 
         const $ = cheerio.load(html);
 
