@@ -78,8 +78,7 @@ functions:
   api:
     handler: lambda.handler
     # timeout heredado de provider (180s)
-    url:
-      authorizer: none  # Function URL pública: bypass API Gateway 29s limit
+    url: true  # Function URL pública sin auth (bypass API Gateway 29s limit)
     events:
       - http:
           path: /{proxy+}
