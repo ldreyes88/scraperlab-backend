@@ -74,7 +74,7 @@ class StrategyFactory {
       detail: ClaroDetailStrategy,
       default: ClaroDetailStrategy
     },
-    'maccenter.com.co': {
+    'mac-center.com': {
       detail: MacCenterDetailStrategy,
       default: MacCenterDetailStrategy
     },
