@@ -10,7 +10,7 @@ class ProcessDetailRepository {
   static async create(detailData) {
     try {
       const item = {
-        detailId: uuidv4(),
+        logId: uuidv4(),
         ...detailData,
         timestamp: detailData.timestamp || nowColombiaISO(),
         ttl: Math.floor(Date.now() / 1000) + (90 * 24 * 60 * 60) // 90 días
@@ -49,7 +49,7 @@ class ProcessDetailRepository {
         const batch = detailsArray.slice(i, i + batchSize);
         
         const items = batch.map(detail => ({
-          detailId: uuidv4(),
+          logId: uuidv4(),
           ...detail,
           timestamp: detail.timestamp || timestamp,
           ttl: detail.ttl || ttl
@@ -85,7 +85,7 @@ class ProcessDetailRepository {
       const result = await dynamoDB.send(
         new QueryCommand({
           TableName: TABLES.PROCESS_DETAIL,
-          IndexName: 'processId-timestamp-index',
+          IndexName: 'ProcessIdTimestampIndex',
           KeyConditionExpression: 'processId = :processId',
           ExpressionAttributeValues: {
             ':processId': processId
@@ -109,7 +109,7 @@ class ProcessDetailRepository {
     try {
       const params = {
         TableName: TABLES.PROCESS_DETAIL,
-        IndexName: 'processId-timestamp-index',
+        IndexName: 'ProcessIdTimestampIndex',
         KeyConditionExpression: 'processId = :processId',
         ExpressionAttributeValues: {
           ':processId': processId
@@ -138,7 +138,7 @@ class ProcessDetailRepository {
   /**
    * Actualizar estado de un detalle
    */
-  static async updateStatus(detailId, success, result = {}) {
+  static async updateStatus(logId, success, result = {}) {
     try {
       const updateExpression = [];
       const expressionAttributeNames = {};
@@ -168,7 +168,7 @@ class ProcessDetailRepository {
       await dynamoDB.send(
         new UpdateCommand({
           TableName: TABLES.PROCESS_DETAIL,
-          Key: { detailId },
+          Key: { logId },
           UpdateExpression: `SET ${updateExpression.join(', ')}`,
           ExpressionAttributeNames: expressionAttributeNames,
           ExpressionAttributeValues: expressionAttributeValues
@@ -190,7 +190,7 @@ class ProcessDetailRepository {
       const result = await dynamoDB.send(
         new QueryCommand({
           TableName: TABLES.PROCESS_DETAIL,
-          IndexName: 'processId-timestamp-index',
+          IndexName: 'ProcessIdTimestampIndex',
           KeyConditionExpression: 'processId = :processId',
           ExpressionAttributeValues: {
             ':processId': processId
