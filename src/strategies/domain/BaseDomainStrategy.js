@@ -22,7 +22,7 @@ class BaseDomainStrategy {
 
   /**
    * Helper para obtener HTML usando el provider configurado
-   * Este método adapta la interfaz de oferty-scraper a scraperlab-backend
+   * Este método adapta la interfaz de batch-process a scraperlab-backend
    * SOLO incluye en providerConfig los parámetros que se pasan explícitamente
    */
   async fetchHtml(url, options = {}) {
@@ -171,7 +171,7 @@ class BaseDomainStrategy {
   }
 
   /**
-   * Limpia precios (mantiene compatibilidad con oferty-scraper)
+   * Limpia precios (mantiene compatibilidad con batch-process)
    */
   cleanPrice(val) {
     if (!val) return 0;
