@@ -294,6 +294,40 @@ class ProcessRepository {
     }
   }
 
+  static async countByUserAndProcessType(userId, processType) {
+    try {
+      let items = [];
+      let lastEvaluatedKey = null;
+
+      do {
+        const scanParams = {
+          TableName: TABLES.PROCESS,
+          FilterExpression: 'userId = :userId AND processType = :processType',
+          ExpressionAttributeValues: {
+            ':userId': userId,
+            ':processType': processType
+          }
+        };
+
+        if (lastEvaluatedKey) {
+          scanParams.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const result = await dynamoDB.send(
+          new ScanCommand(scanParams)
+        );
+
+        items = items.concat(result.Items || []);
+        lastEvaluatedKey = result.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return items.length;
+    } catch (error) {
+      console.error('Error counting logs by user and process type:', error);
+      throw error;
+    }
+  }
+
   static async delete(logId) {
     try {
       await dynamoDB.send(

@@ -6,7 +6,7 @@ const { extractDomain } = require('../utils/helpers');
 const { nowColombiaISO } = require('../utils/time');
 
 class ScraperService {
-  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null) {
+  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null, processType = 'simple') {
     const startTime = Date.now();
     const domain = extractDomain(url);
     
@@ -42,7 +42,7 @@ class ScraperService {
           domainId: domain,
           scraperProvider: domainConfig.providerId,
           scrapeType,
-          processType: 'simple',
+          processType,
           userId,
           userEmail,
           success: true,
@@ -72,7 +72,7 @@ class ScraperService {
           url,
           domainId: domain,
           scrapeType,
-          processType: 'simple',
+          processType,
           userId,
           userEmail,
           success: false,

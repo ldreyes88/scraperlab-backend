@@ -1,6 +1,42 @@
 const ScraperService = require('../services/ScraperService');
 const ProcessService = require('../services/ProcessService');
+const ProcessRepository = require('../repositories/ProcessRepository');
 const { isValidUrl } = require('../utils/helpers');
+
+const DEMO_MAX_QUERIES = parseInt(process.env.DEMO_MAX_QUERIES || '3', 10);
+
+const buildDemoPayload = (serviceResult) => {
+  const raw = serviceResult?.data || {};
+  const prices = raw?.prices || {};
+  const currentPrice = raw?.currentPrice ?? prices?.current ?? 0;
+  const originalPrice = raw?.originalPrice ?? prices?.original ?? currentPrice;
+  const discount = raw?.discount ?? prices?.discount_percentage ?? 0;
+  const availability = raw?.availability;
+  const inStock =
+    typeof raw?.inStock === 'boolean'
+      ? raw.inStock
+      : (typeof availability === 'string'
+        ? !/(sin stock|agotado|out of stock|no disponible)/i.test(availability)
+        : undefined);
+
+  return {
+    success: true,
+    marketplace: raw?.marketplace || serviceResult?.marketplace || 'N/A',
+    data: {
+      currentPrice,
+      originalPrice,
+      discount,
+      ...(typeof inStock === 'boolean' ? { inStock } : {})
+    },
+    durationMs: serviceResult?.metadata?.responseTime || 0,
+    metadata: {
+      scrapeType: 'detail',
+      domain: serviceResult?.metadata?.domain,
+      provider: serviceResult?.metadata?.provider,
+      timestamp: serviceResult?.metadata?.timestamp
+    }
+  };
+};
 
 exports.scrapeUrl = async (req, res, next) => {
   try {
@@ -40,6 +76,71 @@ exports.scrapeUrl = async (req, res, next) => {
     const result = await ScraperService.scrapeUrl(url, shouldSaveLog, type, userId, userEmail);
 
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.scrapeDemo = async (req, res, next) => {
+  try {
+    const { url } = req.body;
+    const userId = req.user?.userId;
+    const userEmail = req.user?.email;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        error: 'Campo requerido: url'
+      });
+    }
+
+    if (!isValidUrl(url)) {
+      return res.status(400).json({
+        success: false,
+        error: 'URL inválida'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'No se pudo identificar el usuario autenticado'
+      });
+    }
+
+    const demoQueries = await ProcessRepository.countByUserAndProcessType(userId, 'demo');
+    if (demoQueries >= DEMO_MAX_QUERIES) {
+      return res.status(429).json({
+        success: false,
+        error: `Límite alcanzado: máximo ${DEMO_MAX_QUERIES} consultas en demo por usuario`,
+        metadata: {
+          limit: DEMO_MAX_QUERIES,
+          used: demoQueries,
+          remaining: 0
+        }
+      });
+    }
+
+    const result = await ScraperService.scrapeUrl(
+      url,
+      true,
+      'detail',
+      userId,
+      userEmail,
+      'demo'
+    );
+
+    const payload = buildDemoPayload(result);
+    const used = demoQueries + 1;
+    res.json({
+      ...payload,
+      metadata: {
+        ...payload.metadata,
+        demoLimit: DEMO_MAX_QUERIES,
+        demoUsed: used,
+        demoRemaining: Math.max(DEMO_MAX_QUERIES - used, 0)
+      }
+    });
   } catch (error) {
     next(error);
   }

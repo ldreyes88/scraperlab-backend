@@ -72,6 +72,7 @@ app.put('/api/clients/:clientId/toggle', verifyToken, requireRole(['admin']), cl
 
 // 🔧 Scraping endpoints (protegidos - permite JWT o API key)
 app.post('/api/scrape', verifyAuth, scraperHandler.scrapeUrl);
+app.post('/api/scrape/demo', verifyAuth, scraperHandler.scrapeDemo);
 app.post('/api/scrape/batch', verifyAuth, scraperHandler.scrapeBatch);
 app.post('/api/scrape/batch/create', verifyAuth, scraperHandler.createBatch);
 app.post('/api/scrape/test', verifyAuth, scraperHandler.testScrape);
