@@ -162,15 +162,17 @@ exports.createBatch = async (req, res, next) => {
       scrapeType || 'detail'
     );
 
-    // Iniciar procesamiento (asíncrono, no esperar)
-    ProcessService.processBatch(process.processId, urls, scrapeType || 'detail').catch(err => {
-      console.error('Error procesando batch:', err);
-    });
+    // Procesar batch (await necesario en Lambda, fire-and-forget no funciona
+    // porque Lambda congela/termina el contexto al enviar la respuesta HTTP)
+    const result = await ProcessService.processBatch(process.processId, urls, scrapeType || 'detail');
 
     res.json({
       success: true,
-      data: process,
-      message: 'Batch creado y en procesamiento'
+      data: {
+        ...process,
+        ...result
+      },
+      message: 'Batch procesado exitosamente'
     });
   } catch (error) {
     next(error);
