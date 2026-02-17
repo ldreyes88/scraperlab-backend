@@ -51,6 +51,20 @@ class UserService {
   }
 
   /**
+   * Crear usuario vinculado por OAuth (mismo email, distinto Cognito sub).
+   * Permite que login con Google funcione cuando el email ya existía por signup.
+   */
+  async createUserFromOAuthLink(oauthSub, email, role, metadata = {}) {
+    const user = await this.userRepository.createUser({
+      userId: oauthSub,
+      email,
+      role: role || 'user',
+      metadata: { ...metadata, oauthLink: true }
+    });
+    return this.sanitizeUser(user);
+  }
+
+  /**
    * Actualizar usuario
    */
   async updateUser(userId, updates) {

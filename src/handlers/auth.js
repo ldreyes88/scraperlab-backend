@@ -424,26 +424,41 @@ const oauthCallback = async (req, res) => {
     try {
       dbUser = await userService.getUserById(userInfo.sub);
     } catch (error) {
-      // Usuario nuevo desde OAuth, establecer rol por defecto
+      // Usuario nuevo desde OAuth o email ya registrado con otro método
       const defaultRole = userInfo.customRole || 'user';
-      
+
+      try {
+        dbUser = await userService.createUser({
+          userId: userInfo.sub,
+          email: userInfo.email,
+          role: defaultRole,
+          metadata: {
+            oauthProvider: true
+          }
+        });
+      } catch (createError) {
+        // Email ya registrado → crear registro vinculado con OAuth sub (para que el token funcione)
+        if (createError.message === 'El email ya está registrado') {
+          const existingUser = await userService.getUserByEmail(userInfo.email);
+          dbUser = await userService.createUserFromOAuthLink(
+            userInfo.sub,
+            userInfo.email,
+            existingUser.role || defaultRole,
+            { oauthProvider: true }
+          );
+        } else {
+          throw createError;
+        }
+      }
+
       // Asegurarse de que el custom:role esté en Cognito
       try {
         await cognitoService.updateUserAttributes(userInfo.email, {
-          'custom:role': defaultRole
+          'custom:role': dbUser.role || defaultRole
         });
       } catch (cognitoError) {
         console.warn('⚠️ Error actualizando custom:role para usuario OAuth:', cognitoError.message);
       }
-      
-      dbUser = await userService.createUser({
-        userId: userInfo.sub,
-        email: userInfo.email,
-        role: defaultRole,
-        metadata: {
-          oauthProvider: true
-        }
-      });
     }
 
     res.json({
