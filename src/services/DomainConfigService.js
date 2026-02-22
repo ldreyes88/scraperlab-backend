@@ -47,7 +47,7 @@ class DomainConfigService {
       domainId: domain,
       providerId: 'scraperapi',
       providerConfig: {
-        render: true,
+        render: false,
         premium: false,
         device_type: 'desktop',
         country_code: 'us'

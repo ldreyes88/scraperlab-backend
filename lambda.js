@@ -17,13 +17,12 @@ const handler = serverless(app, {
       stage: process.env.STAGE
     });
     
-    // Forzar CORS
-    response.headers = {
-      ...response.headers,
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': '*'
-    };
+    // Forzar headers CORS para evitar problemas de origin bloqueado
+    // Especialmente importante para respuestas generadas por middleware de error
+    response.headers = response.headers || {};
+    response.headers['Access-Control-Allow-Origin'] = '*';
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS';
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,X-Api-Key,Authorization';
   }
 });
 

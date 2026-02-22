@@ -7,7 +7,6 @@ const ExitoDetailStrategy = require('./domain/exito.com/ExitoDetailStrategy');
 const FalabellaDetailStrategy = require('./domain/falabella.com.co/FalabellaDetailStrategy');
 const AlkostoDetailStrategy = require('./domain/alkosto.com/AlkostoDetailStrategy');
 const AlkomprarDetailStrategy = require('./domain/alkomprar.com/AlkomprarDetailStrategy');
-const KtronixDetailStrategy = require('./domain/ktronix.com/KtronixDetailStrategy');
 const IShopDetailStrategy = require('./domain/ishop.com.co/IShopDetailStrategy');
 const ClaroDetailStrategy = require('./domain/claro.com.co/ClaroDetailStrategy');
 const MacCenterDetailStrategy = require('./domain/maccenter.com.co/MacCenterDetailStrategy');
@@ -16,6 +15,7 @@ const PequenoMundoDetailStrategy = require('./domain/pequenomundo.com/PequenoMun
 const PequenoMundoSearchStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchStrategy');
 const PequenoMundoSearchSpecificStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchSpecificStrategy');
 const AutoMercadoSearchSpecificStrategy = require('./domain/automercado.cr/AutoMercadoSearchSpecificStrategy');
+const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
 
 class StrategyFactory {
   static providerStrategies = {
@@ -43,10 +43,6 @@ class StrategyFactory {
     'alkomprar.com': {
       detail: AlkomprarDetailStrategy,
       default: AlkomprarDetailStrategy
-    },
-    'ktronix.com': {
-      detail: KtronixDetailStrategy,
-      default: KtronixDetailStrategy
     },
     'ishop.com.co': {
       detail: IShopDetailStrategy,
@@ -95,14 +91,17 @@ class StrategyFactory {
     // Normalizar dominio
     const normalizedDomain = domain.toLowerCase();
     
-    // Verificar si el dominio está soportado
-    const domainTypes = this.domainStrategiesByType[normalizedDomain];
+    // Verificar si el dominio está soportado con lógica específica
+    let domainTypes = this.domainStrategiesByType[normalizedDomain];
     
+    // Si no tiene lógica específica, usar la estrategia genérica dinámica
     if (!domainTypes) {
-      throw new Error(`Dominio no soportado: ${domain}`);
+      console.log(`[StrategyFactory] Usando GenericDynamicStrategy para: ${domain}`);
+      const providerStrategy = this.getStrategy(providerId);
+      return new GenericDynamicStrategy(providerStrategy);
     }
     
-    // Buscar la estrategia específica para el tipo solicitado
+    // Buscar la estrategia específica para el tipo solicitado (logic hardcoded)
     let StrategyClass = domainTypes[scrapeType];
     
     // Si no existe el tipo específico, verificar si podemos usar default

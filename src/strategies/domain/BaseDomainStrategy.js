@@ -54,6 +54,59 @@ class BaseDomainStrategy {
   }
 
   /**
+   * Helper para extraer datos usando los selectores definidos en la configuración del dominio
+   * Esto permite que la estrategia sea dinámica y se adapte a cambios en la BD sin tocar el código
+   */
+  applySelectors($, selectors = {}, url = '') {
+    const data = { url };
+
+    if (!selectors || Object.keys(selectors).length === 0) return data;
+
+    // Extraer campos estándar basados en convenciones de nombres de selectores en la BD
+    if (selectors.priceSelector) {
+      data.currentPrice = $(selectors.priceSelector).first().text().trim();
+    }
+    
+    if (selectors.originalPriceSelector) {
+      data.originalPrice = $(selectors.originalPriceSelector).first().text().trim();
+    }
+
+    if (selectors.titleSelector) {
+      data.title = $(selectors.titleSelector).first().text().trim();
+    }
+
+    if (selectors.imageSelector) {
+      data.image = $(selectors.imageSelector).first().attr('src') || 
+                   $(selectors.imageSelector).first().attr('data-src') ||
+                   $(selectors.imageSelector).first().attr('data-original');
+    }
+
+    if (selectors.availabilitySelector) {
+      data.availability = $(selectors.availabilitySelector).first().text().trim();
+    }
+
+    return data;
+  }
+
+  /**
+   * Fusiona datos extraídos por lógica específica con datos extraídos por selectores
+   * Priorizando la lógica específica pero llenando vacíos con los selectores
+   */
+  mergeExternalData(specificData, selectorData) {
+    const merged = { ...selectorData, ...specificData };
+    
+    // Si la lógica específica no obtuvo precios pero los selectores sí, los usamos
+    if (!merged.currentPrice && selectorData.currentPrice) merged.currentPrice = selectorData.currentPrice;
+    if (!merged.originalPrice && selectorData.originalPrice) merged.originalPrice = selectorData.originalPrice;
+    
+    // Llenar metadatos adicionales que las estrategias hardcoded suelen omitir
+    if (!merged.title && selectorData.title) merged.title = selectorData.title;
+    if (!merged.image && selectorData.image) merged.image = selectorData.image;
+    
+    return merged;
+  }
+
+  /**
    * Formatea la respuesta según el formato de oferty
    * Mantiene compatibilidad con el formato original
    * Usado para tipo: detail (página de producto individual)
@@ -65,10 +118,15 @@ class BaseDomainStrategy {
     originalPrice = 0,
     method = 'N/A',
     error = null,
-    url = ''
+    url = '',
+    data = {} // Permitir pasar un objeto de datos extraído dinámicamente
   }) {
-    const finalCurrent = this.cleanPrice(currentPrice);
-    const finalOriginal = this.cleanPrice(originalPrice || currentPrice);
+    // Si se pasa un objeto data, priorizar sus valores
+    const finalPrice = data.currentPrice || currentPrice;
+    const finalOriginalPrice = data.originalPrice || originalPrice || finalPrice;
+
+    const finalCurrent = this.cleanPrice(finalPrice);
+    const finalOriginal = this.cleanPrice(finalOriginalPrice);
 
     return {
       success,
@@ -80,6 +138,11 @@ class BaseDomainStrategy {
           ? Math.round((1 - (finalCurrent / finalOriginal)) * 100)
           : 0,
         currency: 'COP'
+      },
+      data: {
+        ...data,
+        currentPrice: finalCurrent,
+        originalPrice: finalOriginal
       },
       metadata: {
         method,

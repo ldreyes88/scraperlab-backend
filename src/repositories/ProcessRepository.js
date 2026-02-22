@@ -294,9 +294,9 @@ class ProcessRepository {
     }
   }
 
-  static async countByUserAndProcessType(userId, processType) {
+  static async countByUserAndProcessType(userId, processType, limit = null) {
     try {
-      let items = [];
+      let count = 0;
       let lastEvaluatedKey = null;
 
       do {
@@ -306,7 +306,10 @@ class ProcessRepository {
           ExpressionAttributeValues: {
             ':userId': userId,
             ':processType': processType
-          }
+          },
+          // Si especificamos un limit en el conteo (ej: para demo), 
+          // ayuda a no leer toda la tabla si ya superamos el límite
+          Limit: limit ? Math.min(limit * 10, 100) : 50 
         };
 
         if (lastEvaluatedKey) {
@@ -317,11 +320,16 @@ class ProcessRepository {
           new ScanCommand(scanParams)
         );
 
-        items = items.concat(result.Items || []);
+        count += (result.Items || []).length;
         lastEvaluatedKey = result.LastEvaluatedKey;
+
+        // Si ya llegamos al límite solicitado (ej: 3 para demo), podemos parar
+        if (limit && count >= limit) {
+          return count;
+        }
       } while (lastEvaluatedKey);
 
-      return items.length;
+      return count;
     } catch (error) {
       console.error('Error counting logs by user and process type:', error);
       throw error;

@@ -108,7 +108,7 @@ exports.scrapeDemo = async (req, res, next) => {
       });
     }
 
-    const demoQueries = await ProcessRepository.countByUserAndProcessType(userId, 'demo');
+    const demoQueries = await ProcessRepository.countByUserAndProcessType(userId, 'demo', DEMO_MAX_QUERIES);
     const isAdmin = req.user?.role === 'admin';
 
     if (!isAdmin && demoQueries >= DEMO_MAX_QUERIES) {

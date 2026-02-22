@@ -17,11 +17,16 @@ class KtronixDetailStrategy extends BaseDomainStrategy {
 
       console.log(`[Ktronix] HTML recibido: ${html.length} caracteres`);
 
+      // 1. EXTRAER USANDO SELECTORES DE LA BD (DINÁMICO)
+      const selectorData = this.applySelectors($, domainConfig.selectors, url);
+      if (Object.keys(selectorData).length > 1) { // más que solo la URL
+        method = 'DB-Selectors-Applied';
+      }
+
       let currentPrice = null;
       let originalPrice = null;
 
-      // 1. INTENTO: Buscar en el objeto GAProductData (DataLayer)
-      // Es la forma más fiable en la plataforma de Alkosto/Ktronix
+      // 2. EXTRAER USANDO LÓGICA ESPECÍFICA (DATA LAYER)
       $('script').each((i, el) => {
         const scriptContent = $(el).html();
         if (scriptContent && scriptContent.includes('GAProductData')) {
@@ -33,23 +38,19 @@ class KtronixDetailStrategy extends BaseDomainStrategy {
         }
       });
 
-      // 2. FALLBACK: Atributos itemprop (SEO estándar)
-      if (!currentPrice) {
-        method = 'Itemprop-Meta';
-        currentPrice = $('[itemprop="price"]').attr('content');
-      }
+      // Fusionar ambos resultados
+      const finalData = this.mergeExternalData({ currentPrice, originalPrice }, selectorData);
 
-      if (!currentPrice || this.cleanPrice(currentPrice) === 0) {
+      if (!finalData.currentPrice || this.cleanPrice(finalData.currentPrice) === 0) {
         throw new Error('No se pudo extraer el precio de Ktronix');
       }
 
       return this.formatResponse({
         success: true,
         marketplace: 'Ktronix',
-        currentPrice,
-        originalPrice,
-        method,
-        url
+        method: currentPrice ? method : 'DB-Selectors-Only',
+        url,
+        data: finalData
       });
 
     } catch (error) {
@@ -58,7 +59,7 @@ class KtronixDetailStrategy extends BaseDomainStrategy {
         success: false,
         marketplace: 'Ktronix',
         error: error.message,
-        method,
+        method: 'Error-Generic',
         url
       });
     }
