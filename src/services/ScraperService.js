@@ -31,6 +31,7 @@ class ScraperService {
       );
 
       // 3. Ejecutar extracción con la estrategia del dominio
+      domainConfig.scrapeType = scrapeType;
       const result = await strategy.scrape(url, domainConfig);
 
       const responseTime = Date.now() - startTime;

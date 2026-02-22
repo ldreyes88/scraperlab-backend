@@ -9,11 +9,20 @@ const DOMAIN_TO_UPDATE = 'ktronix.com';
 const TABLE_NAME = process.env.DOMAINS_TABLE_NAME || 'ScraperLab-Domains';
 
 const newSelectors = {
-  titleSelector: "h1",
-  priceSelector: "#js-original_price",
-  originalPriceSelector: "span.before-price__basePrice",
-  availabilitySelector: "#addToCartButton",
-  imageSelector: ".owl-item.active img.owl-lazy"
+  detail: {
+    titleSelector: "h1",
+    priceSelector: "#js-original_price",
+    originalPriceSelector: "span.before-price__basePrice",
+    availabilitySelector: "#addToCartButton",
+    imageSelector: ".owl-item.active img.owl-lazy"
+  },
+  search: {
+    containerSelector: ".product-item",
+    titleSelector: ".product-item__name",
+    priceSelector: ".priceSelector",
+    urlSelector: "a.product-item__image-link",
+    imageSelector: "img"
+  }
 };
 
 async function updateSelectors() {
