@@ -16,8 +16,33 @@ const clientsHandler = require('./src/handlers/clients');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware de CORS configurado para producción y desarrollo
+const whitelist = [
+  'https://scraperlabs.com.co',
+  'https://www.scraperlabs.com.co',
+  'http://localhost:5173', // Vite default dev port
+  'http://localhost:3001'  // Frontend port alternativo
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origin (como apps móviles o curl)
+    if (!origin) return callback(null, true);
+    
+    if (whitelist.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      console.warn(`CORS bloqueado para el origen: ${origin}`);
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
