@@ -109,7 +109,9 @@ exports.scrapeDemo = async (req, res, next) => {
     }
 
     const demoQueries = await ProcessRepository.countByUserAndProcessType(userId, 'demo');
-    if (demoQueries >= DEMO_MAX_QUERIES) {
+    const isAdmin = req.user?.role === 'admin';
+
+    if (!isAdmin && demoQueries >= DEMO_MAX_QUERIES) {
       return res.status(429).json({
         success: false,
         error: `Límite alcanzado: máximo ${DEMO_MAX_QUERIES} consultas en demo por usuario`,
