@@ -51,54 +51,75 @@ class ProviderService {
    */
   static async validateConfig(providerId, config) {
     const schema = await this.getProviderSchema(providerId);
-    const errors = [];
-    const warnings = [];
+    
+    const validateObject = (obj, isRoot = true) => {
+      const errors = [];
+      const warnings = [];
 
-    // Validar campos requeridos
-    for (const [field, rules] of Object.entries(schema)) {
-      if (rules.required && (config[field] === undefined || config[field] === null)) {
-        errors.push(`Campo requerido: ${field}`);
+      // Validar campos requeridos y tipos basados en el schema
+      for (const [field, rules] of Object.entries(schema)) {
+        // Los campos requeridos solo se validan en la raíz (global)
+        if (isRoot && rules.required && (obj[field] === undefined || obj[field] === null)) {
+          errors.push(`Campo requerido: ${field}`);
+        }
+
+        if (obj[field] !== undefined && obj[field] !== null) {
+          // Validar tipo
+          const typeValid = this.validateFieldType(obj[field], rules);
+          if (!typeValid) {
+            errors.push(`${field}: tipo inválido (esperado ${rules.type}, recibido ${typeof obj[field]})`);
+          }
+
+          // Validar enum
+          if (rules.type === 'enum' && !rules.values.includes(obj[field])) {
+            errors.push(`${field}: valor debe ser uno de [${rules.values.join(', ')}]`);
+          }
+
+          // Validar rangos numéricos
+          if (rules.type === 'number' && typeValid) {
+            if (rules.min !== undefined && obj[field] < rules.min) {
+              errors.push(`${field}: debe ser >= ${rules.min}`);
+            }
+            if (rules.max !== undefined && obj[field] > rules.max) {
+              errors.push(`${field}: debe ser <= ${rules.max}`);
+            }
+          }
+
+          // Validar patterns
+          if (rules.pattern && typeof obj[field] === 'string') {
+            const regex = new RegExp(rules.pattern);
+            if (!regex.test(obj[field])) {
+              errors.push(`${field}: no cumple el patrón ${rules.pattern}`);
+            }
+          }
+        }
       }
 
-      if (config[field] !== undefined && config[field] !== null) {
-        // Validar tipo
-        const typeValid = this.validateFieldType(config[field], rules);
-        if (!typeValid) {
-          errors.push(`${field}: tipo inválido (esperado ${rules.type}, recibido ${typeof config[field]})`);
-        }
-
-        // Validar enum
-        if (rules.type === 'enum' && !rules.values.includes(config[field])) {
-          errors.push(`${field}: valor debe ser uno de [${rules.values.join(', ')}]`);
-        }
-
-        // Validar rangos numéricos
-        if (rules.type === 'number' && typeValid) {
-          if (rules.min !== undefined && config[field] < rules.min) {
-            errors.push(`${field}: debe ser >= ${rules.min}`);
-          }
-          if (rules.max !== undefined && config[field] > rules.max) {
-            errors.push(`${field}: debe ser <= ${rules.max}`);
-          }
-        }
-
-        // Validar patterns
-        if (rules.pattern && typeof config[field] === 'string') {
-          const regex = new RegExp(rules.pattern);
-          if (!regex.test(config[field])) {
-            errors.push(`${field}: no cumple el patrón ${rules.pattern}`);
-          }
-        }
+      // Validar campos extra (que no están en el schema y no son claves de override)
+      const specialKeys = ['search', 'searchSpecific'];
+      const extraFields = Object.keys(obj).filter(
+        field => !schema[field] && !specialKeys.includes(field)
+      );
+      
+      if (extraFields.length > 0) {
+        warnings.push(`Campos no soportados por ${providerId}: ${extraFields.join(', ')}`);
       }
-    }
 
-    // Validar campos extra (que no están en el schema)
-    const extraFields = Object.keys(config).filter(
-      field => !schema[field]
-    );
-    if (extraFields.length > 0) {
-      warnings.push(`Campos no soportados por ${providerId}: ${extraFields.join(', ')}`);
-    }
+      // Validar recursivamente las claves de override
+      if (isRoot) {
+        specialKeys.forEach(key => {
+          if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+            const nested = validateObject(obj[key], false);
+            errors.push(...nested.errors.map(err => `${key}.${err}`));
+            warnings.push(...nested.warnings.map(warn => `${key}.${warn}`));
+          }
+        });
+      }
+
+      return { errors, warnings };
+    };
+
+    const { errors, warnings } = validateObject(config);
 
     return {
       valid: errors.length === 0,
@@ -124,25 +145,33 @@ class ProviderService {
    * Obtener configuración con defaults aplicados
    */
   static async getConfigWithDefaults(providerId, userConfig = {}) {
-    
     const schema = await this.getProviderSchema(providerId);
     
-    const configWithDefaults = {};
-
-    // SOLO incluir campos que están explícitamente configurados
-    // NO aplicar defaults automáticamente
-    for (const [field, rules] of Object.entries(schema)) {
-      if (userConfig[field] !== undefined) {
-        configWithDefaults[field] = userConfig[field];
+    const applyFilter = (config) => {
+      const filtered = {};
+      
+      // SOLO incluir campos que están explícitamente configurados y existen en el schema
+      for (const [field, rules] of Object.entries(schema)) {
+        if (config[field] !== undefined) {
+          filtered[field] = config[field];
+        }
       }
-      // Comentado: No aplicar defaults automáticamente
-      // Los parámetros deben ser opcionales y solo enviarse si están configurados
-      // else if (rules.default !== undefined) {
-      //   configWithDefaults[field] = rules.default;
-      // }
-    }
 
-    return configWithDefaults;
+      // Procesar recursivamente claves de override si existen en este nivel (solo raíz debería tenerlas)
+      const specialKeys = ['search', 'searchSpecific'];
+      specialKeys.forEach(key => {
+        if (config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
+          const nested = applyFilter(config[key]);
+          if (Object.keys(nested).length > 0) {
+            filtered[key] = nested;
+          }
+        }
+      });
+
+      return filtered;
+    };
+
+    return applyFilter(userConfig);
   }
 
   /**

@@ -14,8 +14,16 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
     let method = `DB-Dynamic-${scrapeType}`;
     
     try {
-      // 1. Obtener HTML respetando providerConfig de la BD
-      const html = await this.fetchHtml(url, domainConfig.providerConfig || {});
+      // 1. Preparar configuración del provider (Global + Específica por tipo)
+      let providerOptions = { ...(domainConfig.providerConfig || {}) };
+      
+      // Si hay una configuración específica para este tipo (ej: providerConfig.search), sobrescribir la global
+      if (providerOptions[scrapeType] && typeof providerOptions[scrapeType] === 'object') {
+        providerOptions = { ...providerOptions, ...providerOptions[scrapeType] };
+      }
+
+      // Obtener HTML respetando la configuración final
+      const html = await this.fetchHtml(url, providerOptions);
       const $ = cheerio.load(html);
 
       // 2. Determinar qué grupo de selectores usar

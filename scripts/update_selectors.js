@@ -17,11 +17,26 @@ const newSelectors = {
     imageSelector: ".owl-item.active img.owl-lazy"
   },
   search: {
-    containerSelector: ".product-item",
-    titleSelector: ".product-item__name",
-    priceSelector: ".priceSelector",
-    urlSelector: "a.product-item__image-link",
+    containerSelector: "li.product__item",
+    titleSelector: ".product__item__top__title",
+    priceSelector: ".product__price--discounts__price",
+    urlSelector: "a.product__item__top__link",
     imageSelector: "img"
+  }
+};
+
+const newProviderConfig = {
+  // Configuración global minimalista (usa los defaults de ScraperAPI)
+  device_type: 'desktop',
+  
+  // Overrides específicos por tipo
+  search: {
+    render: true,     // Ktronix requiere render para Algolia en búsquedas
+    wait: 2000
+  },
+  detail: {
+    // Para detalle NO necesitamos render, así que no lo ponemos para que ScraperAPI use su default (false)
+    // Esto evita procesos lentos y errores 504.
   }
 };
 
@@ -32,9 +47,10 @@ async function updateSelectors() {
     const params = {
       TableName: TABLE_NAME,
       Key: { domainId: DOMAIN_TO_UPDATE },
-      UpdateExpression: 'SET selectors = :s, updatedAt = :u',
+      UpdateExpression: 'SET selectors = :s, providerConfig = :p, updatedAt = :u',
       ExpressionAttributeValues: {
         ':s': newSelectors,
+        ':p': newProviderConfig,
         ':u': new Date().toISOString()
       },
       ReturnValues: 'ALL_NEW'
