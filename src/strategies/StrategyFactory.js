@@ -2,19 +2,7 @@ const ScraperAPIStrategy = require('./ScraperAPIStrategy');
 const OxylabsStrategy = require('./OxylabsStrategy');
 
 // Domain strategies by type
-const MercadoLibreDetailStrategy = require('./domain/mercadolibre.com.co/MercadoLibreDetailStrategy');
-const ExitoDetailStrategy = require('./domain/exito.com/ExitoDetailStrategy');
-const FalabellaDetailStrategy = require('./domain/falabella.com.co/FalabellaDetailStrategy');
-const AlkostoDetailStrategy = require('./domain/alkosto.com/AlkostoDetailStrategy');
-const AlkomprarDetailStrategy = require('./domain/alkomprar.com/AlkomprarDetailStrategy');
-const IShopDetailStrategy = require('./domain/ishop.com.co/IShopDetailStrategy');
 const ClaroDetailStrategy = require('./domain/claro.com.co/ClaroDetailStrategy');
-const MacCenterDetailStrategy = require('./domain/maccenter.com.co/MacCenterDetailStrategy');
-const MovistarDetailStrategy = require('./domain/movistar.com.co/MovistarDetailStrategy');
-const PequenoMundoDetailStrategy = require('./domain/pequenomundo.com/PequenoMundoDetailStrategy');
-const PequenoMundoSearchStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchStrategy');
-const PequenoMundoSearchSpecificStrategy = require('./domain/pequenomundo.com/PequenoMundoSearchSpecificStrategy');
-const AutoMercadoSearchSpecificStrategy = require('./domain/automercado.cr/AutoMercadoSearchSpecificStrategy');
 const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
 
 class StrategyFactory {
@@ -24,57 +12,9 @@ class StrategyFactory {
   };
 
   static domainStrategiesByType = {
-    'mercadolibre.com.co': {
-      detail: MercadoLibreDetailStrategy,
-      default: MercadoLibreDetailStrategy
-    },
-    'exito.com': {
-      detail: ExitoDetailStrategy,
-      default: ExitoDetailStrategy
-    },
-    'falabella.com.co': {
-      detail: FalabellaDetailStrategy,
-      default: FalabellaDetailStrategy
-    },
-    'alkosto.com': {
-      detail: AlkostoDetailStrategy,
-      default: AlkostoDetailStrategy
-    },
-    'alkomprar.com': {
-      detail: AlkomprarDetailStrategy,
-      default: AlkomprarDetailStrategy
-    },
-    'ishop.com.co': {
-      detail: IShopDetailStrategy,
-      default: IShopDetailStrategy
-    },
-    'mac-center.com': {
-      detail: MacCenterDetailStrategy,
-      default: MacCenterDetailStrategy
-    },
     'tienda.claro.com.co': {
       detail: ClaroDetailStrategy,
       default: ClaroDetailStrategy
-    },
-    'tienda.movistar.com.co': {
-      detail: MovistarDetailStrategy,
-      default: MovistarDetailStrategy
-    },
-    'pequenomundo.com': {
-      detail: PequenoMundoDetailStrategy,
-      search: PequenoMundoSearchStrategy,
-      searchSpecific: PequenoMundoSearchSpecificStrategy,
-      default: PequenoMundoDetailStrategy
-    },
-    'tienda.pequenomundo.com': {
-      detail: PequenoMundoDetailStrategy,
-      search: PequenoMundoSearchStrategy,
-      searchSpecific: PequenoMundoSearchSpecificStrategy,
-      default: PequenoMundoDetailStrategy
-    },
-    'automercado.cr': {
-      searchSpecific: AutoMercadoSearchSpecificStrategy,
-      default: AutoMercadoSearchSpecificStrategy
     }
   };
 

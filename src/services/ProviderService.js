@@ -96,7 +96,7 @@ class ProviderService {
       }
 
       // Validar campos extra (que no están en el schema y no son claves de override)
-      const specialKeys = ['search', 'searchSpecific'];
+      const specialKeys = ['detail', 'search', 'searchSpecific'];
       const extraFields = Object.keys(obj).filter(
         field => !schema[field] && !specialKeys.includes(field)
       );
@@ -158,7 +158,7 @@ class ProviderService {
       }
 
       // Procesar recursivamente claves de override si existen en este nivel (solo raíz debería tenerlas)
-      const specialKeys = ['search', 'searchSpecific'];
+      const specialKeys = ['detail', 'search', 'searchSpecific'];
       specialKeys.forEach(key => {
         if (config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
           const nested = applyFilter(config[key]);

@@ -29,7 +29,7 @@ exports.getConfig = async (req, res, next) => {
 
 exports.createConfig = async (req, res, next) => {
   try {
-    const { domainId, providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled } = req.body;
+    const { domainId, providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled, countryCode } = req.body;
 
     if (!domainId || !providerId) {
       return res.status(400).json({
@@ -44,7 +44,8 @@ exports.createConfig = async (req, res, next) => {
       selectors,
       supportedTypes,
       customRateLimit,
-      enabled
+      enabled,
+      countryCode
     });
 
     res.status(201).json({

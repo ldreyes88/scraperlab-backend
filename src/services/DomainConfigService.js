@@ -81,7 +81,7 @@ class DomainConfigService {
    * Crear o actualizar configuración
    */
   static async createOrUpdateConfig(domainId, configData) {
-    const { providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled } = configData;
+    const { providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled, countryCode } = configData;
 
     // Validar que el provider existe
     await ProviderService.getProvider(providerId);
@@ -109,8 +109,18 @@ class DomainConfigService {
       providerId,
       providerConfig: finalConfig,
       selectors: selectors || {},
+      // Nuevas opciones de extracción modular
+      useJsonLd: configData.useJsonLd !== undefined ? configData.useJsonLd : true,
+      useMeta: configData.useMeta !== undefined ? configData.useMeta : true,
+      useNextData: configData.useNextData || false,
+      useScripts: configData.useScripts || false,
+      scriptPatterns: configData.scriptPatterns || [],
+      useCss: configData.useCss !== undefined ? configData.useCss : true,
+      
       supportedTypes: supportedTypes || ['detail'], // Default a 'detail' si no se especifica
+      strategyOrder: configData.strategyOrder || ['jsonLd', 'nextData', 'scripts', 'meta', 'css'],
       customRateLimit: customRateLimit || null,
+      countryCode: countryCode || configData.country || 'CO',
       enabled: enabled !== undefined ? enabled : true
     };
 

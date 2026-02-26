@@ -14,44 +14,121 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
     let method = `DB-Dynamic-${scrapeType}`;
     
     try {
-      // 1. Preparar configuración del provider (Global + Específica por tipo)
-      let providerOptions = { ...(domainConfig.providerConfig || {}) };
+      // 1. Preparar configuración del provider y de extracción
+      let options = { 
+        ...(domainConfig.providerConfig || {}),
+        // Flags de extracción (modular)
+        useJsonLd: domainConfig.useJsonLd !== false, // On by default if not specified
+        useMeta: domainConfig.useMeta !== false,
+        useNextData: domainConfig.useNextData || false,
+        useScripts: domainConfig.useScripts || false,
+        useCss: domainConfig.useCss !== false,
+        scriptPatterns: domainConfig.scriptPatterns || []
+      };
       
-      // Si hay una configuración específica para este tipo (ej: providerConfig.search), sobrescribir la global
-      if (providerOptions[scrapeType] && typeof providerOptions[scrapeType] === 'object') {
-        providerOptions = { ...providerOptions, ...providerOptions[scrapeType] };
+      // Sobrescribir con configuración específica por tipo si existe
+      if (options[scrapeType] && typeof options[scrapeType] === 'object') {
+        options = { ...options, ...options[scrapeType] };
       }
 
-      // Obtener HTML respetando la configuración final
-      const html = await this.fetchHtml(url, providerOptions);
+      // Obtener HTML
+      const html = await this.fetchHtml(url, options);
       const $ = cheerio.load(html);
 
-      // 2. Determinar qué grupo de selectores usar
-      // Soporta estructura plana (legacy detail) o anidada por tipo
-      let selectors = domainConfig.selectors || {};
-      if (selectors[scrapeType]) {
-        selectors = selectors[scrapeType];
-      }
-
-      // 3. Ejecutar extracción según el tipo
+      // 2. Ejecutar extracción según el tipo
       if (scrapeType === 'search') {
+        let selectors = domainConfig.selectors || {};
+        if (selectors[scrapeType]) selectors = selectors[scrapeType];
         return this.handleSearchExtraction($, selectors, url, domainConfig.domainId);
       }
 
-      // Caso 'detail' o 'searchSpecific' (ambos retornan un solo objeto)
-      const extractedData = this.applySelectors($, selectors, url);
+      // 3. Obtener selectores según el tipo (detail/searchSpecific)
+      let selectors = domainConfig.selectors || {};
+      if (selectors[scrapeType]) selectors = selectors[scrapeType];
 
-      // Fallback universal para Detail si falla por selectores
+      // Pipeline de extracción para Detail / SearchSpecific
+      let extractedData = {};
+      
+      // Orden de prioridad dinámico o por defecto
+      const defaultOrder = ['jsonLd', 'nextData', 'scripts', 'meta', 'css'];
+      const strategyOrder = domainConfig.strategyOrder || defaultOrder;
+      
+      // Mapeo de estrategias a funciones y flags
+      const strategies = {
+        jsonLd: {
+          flag: 'useJsonLd',
+          execute: () => {
+            const jsonLdConfig = selectors.jsonLd || {};
+            const data = this.extractJSONLD($, jsonLdConfig);
+            if (data.currentPrice) method += '+JSON-LD';
+            return data;
+          }
+        },
+        nextData: {
+          flag: 'useNextData',
+          execute: () => {
+            const nextDataConfig = selectors.nextData || {};
+            const data = this.extractNextData($, nextDataConfig);
+            if (data.currentPrice) method += '+NextData';
+            return data;
+          }
+        },
+        scripts: {
+          flag: 'useScripts',
+          execute: () => {
+            const data = this.extractFromScripts($, options.scriptPatterns);
+            if (data.currentPrice) method += '+Scripts';
+            return data;
+          }
+        },
+        meta: {
+          flag: 'useMeta',
+          execute: () => {
+            const data = this.extractMeta($);
+            if (data.currentPrice) method += '+Meta';
+            return data;
+          }
+        },
+        css: {
+          flag: 'useCss',
+          execute: () => {
+            const data = this.applySelectors($, selectors, url);
+            if (data.currentPrice) method += '+Selectors';
+            return data;
+          }
+        }
+      };
+
+      // Ejecutar estrategias según el orden
+      for (const strategyKey of strategyOrder) {
+        const strategy = strategies[strategyKey];
+        if (!strategy) continue;
+
+        // Verificar si la estrategia está habilitada (flag true o no existe flag)
+        const isEnabled = strategy.flag === 'always_true' || options[strategy.flag];
+        
+        if (isEnabled) {
+          const result = strategy.execute();
+          if (result && Object.keys(result).length > 0) {
+            extractedData = this.mergeExternalData(extractedData, result);
+          }
+        }
+      }
+
+      // Fallback universal final para precio si todo falla
       if (!extractedData.currentPrice || this.cleanPrice(extractedData.currentPrice) === 0) {
         extractedData.currentPrice = extractedData.currentPrice || 
           $('meta[property="product:price:amount"]').attr('content') ||
           $('[itemprop="price"]').attr('content');
-          
-        extractedData.title = extractedData.title || 
-          $('meta[property="og:title"]').attr('content') || 
-          $('title').text().trim();
       }
 
+      // Fallback universal para título siempre que falte
+      extractedData.title = extractedData.title || 
+        $('meta[property="og:title"]').attr('content') || 
+        $('meta[name="twitter:title"]').attr('content') ||
+        $('title').text().trim();
+
+      // Formatear respuesta según tipo
       if (scrapeType === 'searchSpecific') {
         return this.formatSearchSpecificResponse({
           success: true,
@@ -60,9 +137,10 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
           originalPrice: extractedData.originalPrice,
           title: extractedData.title,
           image: extractedData.image,
-          productUrl: extractedData.url,
+          productUrl: extractedData.url || url,
           method,
-          url
+          url,
+          details: { ...extractedData, countryCode: domainConfig.countryCode }
         });
       }
 
@@ -71,7 +149,7 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
         marketplace: domainConfig.domainId,
         method,
         url,
-        data: extractedData
+        details: { ...extractedData, countryCode: domainConfig.countryCode }
       });
 
     } catch (error) {
