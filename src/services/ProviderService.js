@@ -147,13 +147,16 @@ class ProviderService {
   static async getConfigWithDefaults(providerId, userConfig = {}) {
     const schema = await this.getProviderSchema(providerId);
     
-    const applyFilter = (config) => {
+    const applyFilter = (config, isRoot = true) => {
       const filtered = {};
       
-      // SOLO incluir campos que están explícitamente configurados y existen en el schema
+      // Aplicar campos del schema
       for (const [field, rules] of Object.entries(schema)) {
         if (config[field] !== undefined) {
           filtered[field] = config[field];
+        } else if (isRoot && rules.default !== undefined) {
+          // Solo aplicar defaults en el nivel raíz (global)
+          filtered[field] = rules.default;
         }
       }
 
@@ -161,7 +164,7 @@ class ProviderService {
       const specialKeys = ['detail', 'search', 'searchSpecific'];
       specialKeys.forEach(key => {
         if (config[key] && typeof config[key] === 'object' && !Array.isArray(config[key])) {
-          const nested = applyFilter(config[key]);
+          const nested = applyFilter(config[key], false); // No aplicar defaults en overrides
           if (Object.keys(nested).length > 0) {
             filtered[key] = nested;
           }
@@ -171,7 +174,7 @@ class ProviderService {
       return filtered;
     };
 
-    return applyFilter(userConfig);
+    return applyFilter(userConfig, true);
   }
 
   /**
