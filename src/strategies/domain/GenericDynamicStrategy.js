@@ -14,22 +14,18 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
     let method = `DB-Dynamic-${scrapeType}`;
     
     try {
-      // 1. Preparar configuración del provider y de extracción
+      // 1. Preparar configuración de extracción (los flags ya vienen del dominio)
+      // Nota: El providerConfig ya viene resuelto (mezclado con overrides) desde el servicio
       let options = { 
         ...(domainConfig.providerConfig || {}),
-        // Flags de extracción (modular)
-        useJsonLd: domainConfig.useJsonLd !== false, // On by default if not specified
+        // Propagar flags de extracción modular
+        useJsonLd: domainConfig.useJsonLd !== false, 
         useMeta: domainConfig.useMeta !== false,
         useNextData: domainConfig.useNextData || false,
         useScripts: domainConfig.useScripts || false,
         useCss: domainConfig.useCss !== false,
         scriptPatterns: domainConfig.scriptPatterns || []
       };
-      
-      // Sobrescribir con configuración específica por tipo si existe
-      if (options[scrapeType] && typeof options[scrapeType] === 'object') {
-        options = { ...options, ...options[scrapeType] };
-      }
 
       // Obtener HTML
       const html = await this.fetchHtml(url, options);

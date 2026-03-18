@@ -21,7 +21,7 @@ class ScraperService {
     
     try {
       // 1. Obtener configuración del dominio
-      const domainConfig = await DomainConfigService.getConfigForUrl(url);
+      const domainConfig = await DomainConfigService.getConfigForUrl(url, scrapeType);
       
       // 2. Obtener estrategia específica para el dominio y tipo
       const strategy = StrategyFactory.getDomainStrategy(

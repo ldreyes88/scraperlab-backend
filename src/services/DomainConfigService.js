@@ -4,9 +4,9 @@ const { extractDomain } = require('../utils/helpers');
 
 class DomainConfigService {
   /**
-   * Obtener configuración para una URL
+   * Obtener configuración para una URL resuelta por tipo de scraping
    */
-  static async getConfigForUrl(url) {
+  static async getConfigForUrl(url, scrapeType = 'detail') {
     const domain = extractDomain(url);
     
     let config = await DomainRepository.getByDomain(domain);
@@ -33,9 +33,42 @@ class DomainConfigService {
       //console.log('🔍 [DEBUG] Usando providerConfig de BD sin aplicar defaults');
     }
 
+    // Resolver configuración basada en el tipo de scraping (detail, search, searchSpecific)
+    const resolvedProviderConfig = this.resolveProviderConfig(
+        providerConfig, 
+        scrapeType
+    );
+
     return {
       ...config,
-      providerConfig
+      providerConfig: resolvedProviderConfig
+    };
+  }
+
+  /**
+   * Resuelve la configuración final mezclando la raíz (global) con los overrides por tipo
+   * @param {object} config - providerConfig completo
+   * @param {string} scrapeType - Tipo de scraping (detail, search, searchSpecific)
+   */
+  static resolveProviderConfig(config, scrapeType = 'detail') {
+    if (!config) config = {};
+
+    // 1. Extraer configuración base (raíz)
+    const specialKeys = ['detail', 'search', 'searchSpecific'];
+    const baseConfig = {};
+    
+    Object.keys(config).forEach(key => {
+      if (!specialKeys.includes(key)) {
+        baseConfig[key] = config[key];
+      }
+    });
+
+    // 2. Mezclar con el override del tipo solicitado si existe
+    const override = config[scrapeType] || {};
+    
+    return {
+      ...baseConfig,
+      ...override
     };
   }
 

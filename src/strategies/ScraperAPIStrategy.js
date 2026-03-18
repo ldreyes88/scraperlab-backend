@@ -46,6 +46,14 @@ class ScraperAPIStrategy extends BaseStrategy {
       params.wait_for_selector = providerConfig.wait_for_selector;
     }
 
+    if (providerConfig.session_number !== undefined && providerConfig.session_number !== '') {
+      params.session_number = providerConfig.session_number;
+    }
+
+    if (providerConfig.keep_headers !== undefined) {
+      params.keep_headers = providerConfig.keep_headers;
+    }
+
     // Headers personalizados
     const config = {
       params,

@@ -64,8 +64,23 @@ function cleanPrice(val, countryCode = 'CO', url = '') {
       if (parts[1] && parts[1].length === 2) normalized = str.replace(',', '.');
       else normalized = str.replace(',', ''); // Eran miles
     } else if (str.includes('.')) {
-      // Solo punto: en este formato suelen ser miles
-      normalized = str.replace(/\./g, '');
+      // Solo punto: en este formato suelen ser miles, pero verificamos si parece decimal
+      const parts = str.split('.');
+      const lastPart = parts[parts.length - 1];
+      
+      // CASO ESPECIAL COLOMBIA / AMBIGUO: 
+      // Si hay múltiples puntos y el último bloque tiene exactamente 2 dígitos (ej: 2.185.500.48)
+      // es MUY probable que el último punto sea un decimal (estilo US) o ruido de centavos/descuentos.
+      if (parts.length > 2 && lastPart.length === 2) {
+        const thousandPart = parts.slice(0, -1).join('');
+        normalized = `${thousandPart}.${lastPart}`;
+      }
+      // Caso estándar: Si hay exactamente 1 o 2 dígitos después del único punto
+      else if (parts.length === 2 && lastPart.length <= 2) {
+        normalized = str; // Es decimal
+      } else {
+        normalized = str.replace(/\./g, ''); // Son miles o formato inconsistente
+      }
     }
   } else {
     // Formato Americano: 1,299.00

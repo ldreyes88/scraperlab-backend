@@ -40,6 +40,8 @@ class BaseDomainStrategy {
     }
     if (options.headers !== undefined && options.headers !== null) providerConfig.headers = options.headers;
     if (options.country_code !== undefined) providerConfig.country_code = options.country_code;
+    if (options.session_number !== undefined) providerConfig.session_number = options.session_number;
+    if (options.keep_headers !== undefined) providerConfig.keep_headers = options.keep_headers;
 
     const domainConfig = {
       providerConfig,
@@ -233,7 +235,14 @@ class BaseDomainStrategy {
         // Precios
         const pricePath = config.pricePath;
         if (pricePath) {
+          // Intentar primero RELATIVO al producto
           data.currentPrice = this.getValueByPath(product, pricePath);
+          
+          // FALLBACK: Si no encontró nada y parece una ruta ABSOLUTA (empieza por props o query)
+          // o simplemente si falló, intentamos contra el JSON raíz
+          if (!data.currentPrice && (pricePath.startsWith('props') || pricePath.startsWith('query'))) {
+            data.currentPrice = this.getValueByPath(json, pricePath);
+          }
         }
 
         if (!data.currentPrice && product.prices && product.prices.length > 0) {
@@ -243,7 +252,13 @@ class BaseDomainStrategy {
 
         const originalPricePath = config.originalPricePath;
         if (originalPricePath) {
+          // Intentar primero RELATIVO al producto
           data.originalPrice = this.getValueByPath(product, originalPricePath);
+          
+          // FALLBACK: Misma lógica para precio original
+          if (!data.originalPrice && (originalPricePath.startsWith('props') || originalPricePath.startsWith('query'))) {
+            data.originalPrice = this.getValueByPath(json, originalPricePath);
+          }
         }
 
         if (!data.originalPrice && product.prices && product.prices.length > 0) {
@@ -327,13 +342,30 @@ extractFromScripts($, patterns = []) {
     const cssSelectors = selectors.css || selectors;
 
     // Helper para obtener texto del primer elemento que no esté vacío
+    // Prioriza atributos sobre el texto directo para evitar ruidos de concatenación (ej: descuentos)
     const getFirstNonEmpty = (selector) => {
       if (!selector) return null;
       let text = '';
       $(selector).each((i, el) => {
-        const val = $(el).text().trim();
-        if (val && !text) {
-          text = val;
+        const item = $(el);
+        
+        // 1. Intentar extraer de atributos comunes de precio si existen
+        const attrVal = item.attr('data-event-price') || 
+                        item.attr('data-price') || 
+                        item.attr('data-normal-price') ||
+                        item.attr('content') || 
+                        item.attr('value');
+        
+        if (attrVal && !text) {
+          text = attrVal.trim();
+        }
+        
+        // 2. Si no hay atributo, usar el texto plano
+        if (!text) {
+          const val = item.text().trim();
+          if (val) {
+            text = val;
+          }
         }
       });
       return text || null;
@@ -414,6 +446,23 @@ extractFromScripts($, patterns = []) {
 
     const finalCurrent = cleanPrice(finalPrice, country, url);
     const finalOriginal = cleanPrice(finalOriginalPrice, country, url);
+
+    // Validación de seguridad: Si el precio subió más del 100% respecto al original (o un umbral definido),
+    // es probable que sea un error de scraping (como un 0 extra)
+    const maxIncrease = details.maxPriceIncrease || 2.0; // Default 100% (x2)
+    if (success && finalOriginal > 0 && finalCurrent > finalOriginal * maxIncrease) {
+      return {
+        success: false,
+        marketplace: marketplace || details.marketplace,
+        error: `Precio sospechoso: incremento > ${Math.round((maxIncrease - 1) * 100)}% (${finalCurrent} vs ${finalOriginal})`,
+        metadata: {
+          method,
+          timestamp: nowColombiaISO(),
+          url,
+          suspiciousPrice: true
+        }
+      };
+    }
 
     return {
       success,

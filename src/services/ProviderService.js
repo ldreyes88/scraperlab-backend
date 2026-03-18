@@ -154,9 +154,6 @@ class ProviderService {
       for (const [field, rules] of Object.entries(schema)) {
         if (config[field] !== undefined) {
           filtered[field] = config[field];
-        } else if (isRoot && rules.default !== undefined) {
-          // Solo aplicar defaults en el nivel raíz (global)
-          filtered[field] = rules.default;
         }
       }
 

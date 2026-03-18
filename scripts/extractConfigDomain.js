@@ -1,6 +1,6 @@
-require('dotenv').config();
-const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+const fs = require('fs');
 const DomainConfigService = require('../src/services/DomainConfigService');
 
 async function extractConfig() {
