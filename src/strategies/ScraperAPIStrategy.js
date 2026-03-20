@@ -30,6 +30,10 @@ class ScraperAPIStrategy extends BaseStrategy {
       params.premium = providerConfig.premium;
     }
 
+    if (providerConfig.ultra_premium !== undefined) {
+      params.ultra_premium = providerConfig.ultra_premium;
+    }
+
     if (providerConfig.device_type !== undefined) {
       params.device_type = providerConfig.device_type;
     }

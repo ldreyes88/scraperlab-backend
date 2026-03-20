@@ -33,6 +33,7 @@ class BaseDomainStrategy {
     
     if (options.render !== undefined) providerConfig.render = options.render;
     if (options.premium !== undefined) providerConfig.premium = options.premium;
+    if (options.ultra_premium !== undefined) providerConfig.ultra_premium = options.ultra_premium;
     if (options.device_type !== undefined) providerConfig.device_type = options.device_type;
     if (options.wait !== undefined && options.wait > 0) providerConfig.wait = options.wait;
     if (options.wait_for_selector !== undefined && options.wait_for_selector !== null) {
@@ -460,6 +461,24 @@ extractFromScripts($, patterns = []) {
           timestamp: nowColombiaISO(),
           url,
           suspiciousPrice: true
+        }
+      };
+    }
+
+    // Validación de seguridad: Precio absurdo (bajó demasiado)
+    // Se dispara si el precio es < 5% del original y el original es > 1000
+    const minRatio = details.minPriceRatio || 0.05;
+    if (success && finalOriginal > 1000 && finalCurrent < finalOriginal * minRatio) {
+      return {
+        success: false,
+        marketplace: marketplace || details.marketplace,
+        error: `Precio sospechoso (Absurdo): bajó > ${Math.round((1 - minRatio) * 100)}% (${finalCurrent} vs ${finalOriginal})`,
+        metadata: {
+          method,
+          timestamp: nowColombiaISO(),
+          url,
+          suspiciousPrice: true,
+          absurdPrice: true
         }
       };
     }
