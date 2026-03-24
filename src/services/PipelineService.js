@@ -22,6 +22,7 @@ class PipelineService {
       input: inputData,
       nodes: {},
       results: [],
+      config: process.env,
       startTime: nowColombiaISO()
     };
 
