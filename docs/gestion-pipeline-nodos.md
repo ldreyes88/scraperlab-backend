@@ -64,6 +64,14 @@ Marca el fin del flujo y persiste/retorna el resultado final.
 *   **Config**: 
     *   `dataTemplate`: Qué dato específico guardar como resultado del pipeline.
 
+### 7. API_REQUEST (Integración Externa)
+Realiza peticiones HTTP a servidores externos o servicios propios.
+*   **Config**: 
+    *   `url`: URL destino (soporta templates).
+    *   `method`: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
+    *   `bodyTemplate`: JSON para el cuerpo de la petición (POST/PUT/PATCH).
+    *   `headers`: Objeto de cabeceras dinámicas.
+
 ---
 
 ## 📎 Resolución de Variables (Templates)

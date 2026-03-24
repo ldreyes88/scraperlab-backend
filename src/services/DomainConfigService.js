@@ -53,15 +53,23 @@ class DomainConfigService {
 
     }
 
-    // Resolver configuración basada en el tipo de scraping (detail, search, searchSpecific)
+    // Resolver configuraciones basadas en el tipo de scraping (detail, search, searchSpecific)
     const resolvedProviderConfig = this.resolveProviderConfig(
         providerConfig, 
         scrapeType
     );
 
+    // También resolver scraperConfig/selectors específicos del tipo
+    const resolvedScraperConfig = this.resolveProviderConfig(
+        config.scraperConfig || config.selectors || {}, 
+        scrapeType
+    );
+
     return {
       ...config,
-      providerConfig: resolvedProviderConfig
+      providerConfig: resolvedProviderConfig,
+      selectors: resolvedScraperConfig,       // Inyectamos esto para compatibilidad con estrategias
+      scraperConfig: resolvedScraperConfig    // Normalizado por tipo
     };
   }
 
