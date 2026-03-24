@@ -13,6 +13,7 @@ const processHandler = require('./src/handlers/process');
 const authHandler = require('./src/handlers/auth');
 const usersHandler = require('./src/handlers/users');
 const clientsHandler = require('./src/handlers/clients');
+const pipelinesHandler = require('./src/handlers/pipelines');
 
 const app = express();
 
@@ -122,6 +123,14 @@ app.put('/api/domains/:domainId/provider', verifyToken, requireRole(['admin']), 
 app.post('/api/domains/validate', verifyToken, requireRole(['admin']), domainsHandler.validateConfig);
 app.put('/api/domains/:domainId/toggle', verifyToken, requireRole(['admin']), domainsHandler.toggleEnabled);
 
+// 🔗 Pipelines endpoints (solo admin)
+app.get('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler.getAllPipelines);
+app.get('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.getPipeline);
+app.post('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler.createPipeline);
+app.put('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.updatePipeline);
+app.delete('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.deletePipeline);
+app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipeline);
+
 // 📊 Process endpoints (admin y usuarios pueden ver sus propios logs)
 app.get('/api/process', verifyToken, requireRole(['admin', 'user']), processHandler.getLogs);
 app.get('/api/process/:processId/details', verifyToken, requireRole(['admin', 'user']), processHandler.getBatchDetails);
@@ -129,6 +138,14 @@ app.get('/api/process/domain/:domainId', verifyToken, requireRole(['admin', 'use
 app.get('/api/process/stats', verifyToken, requireRole(['admin']), processHandler.getStats);
 app.get('/api/process/stats/domain/:domainId', verifyToken, requireRole(['admin']), processHandler.getDomainStats);
 app.delete('/api/process/:logId', verifyToken, requireRole(['admin']), processHandler.deleteLog);
+
+// 🧩 Nodes Library (solo admin)
+const nodesHandler = require('./src/handlers/nodes');
+app.get('/api/nodes', verifyToken, requireRole(['admin']), nodesHandler.getAllNodes);
+app.get('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.getNode);
+app.post('/api/nodes', verifyToken, requireRole(['admin']), nodesHandler.createNode);
+app.put('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.updateNode);
+app.delete('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.deleteNode);
 
 // Error handler
 app.use(errorHandler);
@@ -150,3 +167,4 @@ if (require.main === module) {
   }
 
 module.exports = app;
+// Trigger restart

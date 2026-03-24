@@ -11,8 +11,28 @@ class DomainConfigService {
     
     let config = await DomainRepository.getByDomain(domain);
     
+    // Fallback de subdominios: si no existe config exacta, buscar si el dominio base lo soporta
+    // Ejemplo: listado.mercadolibre.com.co -> buscar mercadolibre.com.co y verificar config.subdomains
+    if (!config && domain.includes('.')) {
+      const parts = domain.split('.');
+      
+      // Intentar encontrar el dominio base (quitando el primer segmento)
+      if (parts.length > 2) {
+        const subdomainPrefix = parts[0];
+        const baseDomain = parts.slice(1).join('.');
+        
+        const baseConfig = await DomainRepository.getByDomain(baseDomain);
+        
+        // Solo aplicar si el subdominio está en la lista de soportados
+        if (baseConfig && baseConfig.subdomains && baseConfig.subdomains.includes(subdomainPrefix)) {
+          console.log(`[DomainConfig] Usando config base ${baseDomain} para subdominio soportado: ${subdomainPrefix}`);
+          config = baseConfig;
+        }
+      }
+    }
+    
     if (!config) {
-      console.log(`No existe config para ${domain}, usando default`);
+      console.log(`[DomainConfig] No existe config para ${domain}, usando default`);
       config = await this.getDefaultConfig(domain);
     }
     
@@ -30,7 +50,7 @@ class DomainConfigService {
         {}
       );
     } else {
-      //console.log('🔍 [DEBUG] Usando providerConfig de BD sin aplicar defaults');
+
     }
 
     // Resolver configuración basada en el tipo de scraping (detail, search, searchSpecific)
@@ -52,20 +72,21 @@ class DomainConfigService {
    */
   static resolveProviderConfig(config, scrapeType = 'detail') {
     if (!config) config = {};
-
-    // 1. Extraer configuración base (raíz)
     const specialKeys = ['detail', 'search', 'searchSpecific'];
-    const baseConfig = {};
     
+    // 1. Obtener base (Global/Root) - Todavía permitimos campos raíz para compatibilidad
+    const baseConfig = {};
     Object.keys(config).forEach(key => {
       if (!specialKeys.includes(key)) {
         baseConfig[key] = config[key];
       }
     });
 
-    // 2. Mezclar con el override del tipo solicitado si existe
+    // 2. Obtener el override específico del tipo solicitado
     const override = config[scrapeType] || {};
     
+    // 3. Mezclar base (root) con el override (específico)
+    // Ya NO mezclamos Detail con otros tipos. Cada uno es independiente.
     return {
       ...baseConfig,
       ...override
@@ -85,7 +106,7 @@ class DomainConfigService {
         device_type: 'desktop',
         country_code: 'us'
       },
-      selectors: {},
+      scraperConfig: {},
       customRateLimit: null,
       enabled: true,
       isDefault: true
@@ -114,7 +135,24 @@ class DomainConfigService {
    * Crear o actualizar configuración
    */
   static async createOrUpdateConfig(domainId, configData) {
-    const { providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled, countryCode } = configData;
+
+    const { 
+      providerId, 
+      providerConfig, 
+      scraperConfig, 
+      selectors,
+      supportedTypes, 
+      customRateLimit, 
+      enabled, 
+      countryCode,
+      subdomains,
+      strategyOrder
+    } = configData;
+
+
+
+    // Renombrar selectors a scraperConfig si es necesario (migración transparente)
+    const finalScraperConfig = scraperConfig || selectors || {};
 
     // Validar que el provider existe
     await ProviderService.getProvider(providerId);
@@ -141,21 +179,28 @@ class DomainConfigService {
       domainId,
       providerId,
       providerConfig: finalConfig,
-      selectors: selectors || {},
+      scraperConfig: finalScraperConfig,
       // Nuevas opciones de extracción modular
       useJsonLd: configData.useJsonLd !== undefined ? configData.useJsonLd : true,
       useMeta: configData.useMeta !== undefined ? configData.useMeta : true,
       useNextData: configData.useNextData || false,
       useScripts: configData.useScripts || false,
-      scriptPatterns: configData.scriptPatterns || [],
       useCss: configData.useCss !== undefined ? configData.useCss : true,
       
-      supportedTypes: supportedTypes || ['detail'], // Default a 'detail' si no se especifica
-      strategyOrder: configData.strategyOrder || ['jsonLd', 'nextData', 'scripts', 'meta', 'css'],
+      supportedTypes: supportedTypes || ['detail'], 
+      subdomains: subdomains || [],
+      strategyOrder: strategyOrder || ['jsonLd', 'nextData', 'scripts', 'meta', 'css'],
       customRateLimit: customRateLimit || null,
-      countryCode: countryCode || configData.country || 'CO',
+      countryCode: countryCode || configData.countryCode || configData.country || 'CO',
+      typeService: configData.typeService || ['scraping'],
       enabled: enabled !== undefined ? enabled : true
     };
+
+    // Asegurar que scriptPatterns migre de la raíz a scraperConfig.detail si es necesario
+    if (configData.scriptPatterns && (!configToSave.scraperConfig.detail || !configToSave.scraperConfig.detail.scripts)) {
+      if (!configToSave.scraperConfig.detail) configToSave.scraperConfig.detail = {};
+      configToSave.scraperConfig.detail.scripts = configData.scriptPatterns;
+    }
 
     return await DomainRepository.upsert(domainId, configToSave);
   }

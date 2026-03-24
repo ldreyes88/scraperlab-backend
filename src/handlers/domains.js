@@ -29,24 +29,9 @@ exports.getConfig = async (req, res, next) => {
 
 exports.createConfig = async (req, res, next) => {
   try {
-    const { domainId, providerId, providerConfig, selectors, supportedTypes, customRateLimit, enabled, countryCode } = req.body;
+    const { domainId } = req.body;
 
-    if (!domainId || !providerId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Campos requeridos: domainId, providerId'
-      });
-    }
-
-    const config = await DomainConfigService.createOrUpdateConfig(domainId, {
-      providerId,
-      providerConfig,
-      selectors,
-      supportedTypes,
-      customRateLimit,
-      enabled,
-      countryCode
-    });
+    const config = await DomainConfigService.createOrUpdateConfig(domainId, req.body);
 
     res.status(201).json({
       success: true,
@@ -61,6 +46,7 @@ exports.createConfig = async (req, res, next) => {
 exports.updateConfig = async (req, res, next) => {
   try {
     const { domainId } = req.params;
+
     const config = await DomainConfigService.createOrUpdateConfig(domainId, req.body);
     
     res.json({

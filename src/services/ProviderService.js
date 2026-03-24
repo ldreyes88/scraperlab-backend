@@ -193,8 +193,11 @@ class ProviderService {
     return await ProviderRepository.create({
       providerId,
       name,
+      description: providerData.description || '',
+      type: providerData.type || 'API',
       baseUrl: baseUrl || '',
       authType: authType || 'api_key',
+      apiKey: providerData.apiKey || '',
       configSchema,
       pricing: providerData.pricing || {},
       rateLimit: providerData.rateLimit || {},

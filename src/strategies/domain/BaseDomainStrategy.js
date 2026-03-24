@@ -46,7 +46,7 @@ class BaseDomainStrategy {
 
     const domainConfig = {
       providerConfig,
-      selectors: {} // No necesitamos selectores para estrategias custom
+      scraperConfig: {} // No necesitamos selectores para estrategias custom
     };
 
     // Usar el provider para hacer scraping genérico y obtener el HTML

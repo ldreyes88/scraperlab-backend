@@ -31,18 +31,16 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       const html = await this.fetchHtml(url, options);
       const $ = cheerio.load(html);
 
-      // 2. Ejecutar extracción según el tipo
+      // 2. Obtener configuración de extracción según el tipo (detail/searchSpecific/search)
+      // Nota: Soportamos tanto 'scraperConfig' (nuevo) como 'selectors' (legacy)
+      const fullConfig = domainConfig.scraperConfig || domainConfig.selectors || {};
+      const selectors = fullConfig[scrapeType] || {};
+
       if (scrapeType === 'search') {
-        let selectors = domainConfig.selectors || {};
-        if (selectors[scrapeType]) selectors = selectors[scrapeType];
         return this.handleSearchExtraction($, selectors, url, domainConfig.domainId);
       }
 
-      // 3. Obtener selectores según el tipo (detail/searchSpecific)
-      let selectors = domainConfig.selectors || {};
-      if (selectors[scrapeType]) selectors = selectors[scrapeType];
-
-      // Pipeline de extracción para Detail / SearchSpecific
+      // 3. Pipeline de extracción para Detail / SearchSpecific
       let extractedData = {};
       
       // Orden de prioridad dinámico o por defecto

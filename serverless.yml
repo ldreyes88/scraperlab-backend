@@ -23,6 +23,8 @@ provider:
     PROCESS_DETAIL_TABLE_NAME: ScraperLab-Process-Detail
     USERS_TABLE_NAME: ScraperLab-Users
     CLIENTS_TABLE_NAME: ScraperLab-Clients
+    PIPELINES_TABLE_NAME: ScraperLab-Pipelines
+    NODES_TABLE_NAME: ScraperLab-Nodes
     NODE_ENV: ${self:custom.stages.${self:provider.stage}.nodeEnv, 'production'}
     STAGE: ${self:provider.stage}
     
@@ -73,6 +75,10 @@ provider:
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.USERS_TABLE_NAME}/index/*
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CLIENTS_TABLE_NAME}
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CLIENTS_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PIPELINES_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PIPELINES_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.NODES_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.NODES_TABLE_NAME}/index/*
 
 functions:
   api:
