@@ -111,6 +111,25 @@ class ProcessRepository {
     }
   }
 
+  static async updateSteps(processId, steps) {
+    try {
+      await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.PROCESS,
+          Key: { logId: processId },
+          UpdateExpression: 'SET steps = :steps',
+          ExpressionAttributeValues: {
+            ':steps': steps
+          }
+        })
+      );
+      return true;
+    } catch (error) {
+      console.error('Error updating steps:', error);
+      throw error;
+    }
+  }
+
   static async getByDomain(domainId, limit = 50) {
     try {
       const result = await dynamoDB.send(
@@ -266,6 +285,24 @@ class ProcessRepository {
       };
     } catch (error) {
       console.error('Error getting paginated logs:', error);
+      throw error;
+    }
+  }
+
+  static async getById(processId) {
+    try {
+      const result = await dynamoDB.send(
+        new QueryCommand({
+          TableName: TABLES.PROCESS,
+          KeyConditionExpression: 'logId = :logId',
+          ExpressionAttributeValues: {
+            ':logId': processId
+          }
+        })
+      );
+      return result.Items?.[0] || null;
+    } catch (error) {
+      console.error('Error getting process by id:', error);
       throw error;
     }
   }

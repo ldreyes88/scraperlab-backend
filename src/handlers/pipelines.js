@@ -77,11 +77,11 @@ exports.deletePipeline = async (req, res, next) => {
 exports.runPipeline = async (req, res, next) => {
   try {
     const { pipelineId } = req.params;
-    // req.body contiene los inputs iniciales del pipeline
-    const result = await PipelineService.execute(pipelineId, req.body);
+    // Iniciamos la ejecución asíncrona y devolvemos el processId
+    const processId = await PipelineService.start(pipelineId, req.body);
     res.json({
       success: true,
-      data: result
+      processId
     });
   } catch (error) {
     next(error);

@@ -1,14 +1,39 @@
 // src/services/PipelineService.js
 const PipelineRepository = require('../repositories/PipelineRepository');
+const ProcessRepository = require('../repositories/ProcessRepository');
 const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
 const { nowColombiaISO } = require('../utils/time');
 
 class PipelineService {
   /**
+   * Iniciar la ejecución de un pipeline de forma asíncrona
+   */
+  async start(pipelineId, inputData = {}) {
+    // Crear el registro de proceso
+    const processRecord = await ProcessRepository.create({
+      processType: 'pipeline',
+      pipelineId: pipelineId,
+      status: 'pending',
+      input: inputData,
+      steps: []
+    });
+
+    const processId = processRecord.processId;
+
+    // Disparar ejecución en background
+    this.execute(pipelineId, inputData, processId).catch(err => {
+      console.error(`[PipelineService] Error crítico:`, err);
+      ProcessRepository.updateStatus(processId, 'failed');
+    });
+
+    return processId;
+  }
+
+  /**
    * Ejecutar un pipeline por ID
    */
-  async execute(pipelineId, inputData = {}) {
+  async execute(pipelineId, inputData = {}, processId = null) {
     const pipeline = await PipelineRepository.getById(pipelineId);
     if (!pipeline) {
       throw new Error(`Pipeline ${pipelineId} no encontrado`);
@@ -26,7 +51,11 @@ class PipelineService {
       startTime: nowColombiaISO()
     };
 
-    console.log(`Iniciando ejecución de pipeline: ${pipelineId}`);
+    console.log(`Iniciando ejecución de pipeline: ${pipelineId}${processId ? ` (Process: ${processId})` : ''}`);
+
+    if (processId) {
+      await ProcessRepository.updateStatus(processId, 'running');
+    }
 
     // Empezar por el nodo 'start' o el primero de la lista
     let currentNodeId = pipeline.startNodeId || (pipeline.nodes && pipeline.nodes[0]?.id);
@@ -65,6 +94,15 @@ class PipelineService {
         currentNodeId = node.onError || null;
         if (!currentNodeId) break; 
       }
+
+      // Actualizar progreso en el repositorio de procesos si aplica
+      if (processId) {
+        await ProcessRepository.updateSteps(processId, state.results);
+      }
+    }
+
+    if (processId) {
+      await ProcessRepository.updateStatus(processId, 'completed');
     }
 
     state.endTime = nowColombiaISO();

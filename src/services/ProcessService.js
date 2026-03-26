@@ -12,6 +12,13 @@ class ProcessService {
   }
 
   /**
+   * Obtener un proceso por ID
+   */
+  static async getById(processId) {
+    return await ProcessRepository.getById(processId);
+  }
+
+  /**
    * Obtener procesos con paginación y filtros
    */
   static async getPaginatedLogs(page = 1, pageSize = 20, filters = {}) {

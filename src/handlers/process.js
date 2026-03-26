@@ -130,3 +130,24 @@ exports.getBatchDetails = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getProcessStatus = async (req, res, next) => {
+  try {
+    const { processId } = req.params;
+    const process = await ProcessService.getById(processId);
+    
+    if (!process) {
+      return res.status(404).json({
+        success: false,
+        error: 'Proceso no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: process
+    });
+  } catch (error) {
+    next(error);
+  }
+};
