@@ -44,7 +44,7 @@ provider:
     COGNITO_DOMAIN: ${env:COGNITO_DOMAIN}
     COGNITO_REGION: ${env:COGNITO_REGION}
 
-    # Variables para conexión con Oferty Backend
+    # Variables conexión con Oferty Backend
     OFERTY_INTERNAL_API_URL: ${env:OFERTY_INTERNAL_API_URL}
     OFERTY_INTERNAL_API_KEY: ${env:OFERTY_INTERNAL_API_KEY}
   
