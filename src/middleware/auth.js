@@ -123,11 +123,14 @@ const verifyApiKey = async (req, res, next) => {
     const apiKey = req.headers['x-api-key'];
     
     if (!apiKey) {
+      console.warn('⚠️ No se proporcionó API key en los headers');
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'No se proporcionó API key' 
       });
     }
+
+    console.log(`🔍 Verificando API Key: ${apiKey.substring(0, 8)}...`);
 
     // Importar el repositorio de usuarios
     const UserRepository = require('../repositories/UserRepository');
@@ -137,11 +140,14 @@ const verifyApiKey = async (req, res, next) => {
     const user = await userRepo.getUserByApiKey(apiKey);
 
     if (!user || !user.isActive) {
+      console.warn(`❌ API key inválida o usuario inactivo para la llave: ${apiKey.substring(0, 8)}...`);
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'API key inválida o usuario inactivo' 
       });
     }
+
+    console.log(`✅ Autenticación exitosa para el usuario: ${user.email} con API Key.`);
 
     // Agregar información del usuario a la request
     req.user = {
@@ -171,6 +177,12 @@ const verifyApiKey = async (req, res, next) => {
 const verifyAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const apiKey = req.headers['x-api-key'];
+
+  console.log('🛡️ Headers recibidos en verifyAuth:', { 
+    hasAuth: !!authHeader, 
+    hasApiKey: !!apiKey,
+    apiKeyPrefix: apiKey ? apiKey.substring(0, 10) : 'null'
+  });
 
   // Priorizar JWT si está presente
   if (authHeader && authHeader.startsWith('Bearer ')) {
