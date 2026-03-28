@@ -1,6 +1,7 @@
 // src/services/PipelineService.js
 const PipelineRepository = require('../repositories/PipelineRepository');
 const ProcessRepository = require('../repositories/ProcessRepository');
+const ProcessDetailRepository = require('../repositories/ProcessDetailRepository');
 const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
 const { nowColombiaISO } = require('../utils/time');
@@ -69,26 +70,54 @@ class PipelineService {
 
       console.log(`Ejecutando nodo: ${node.id} (${node.type})`);
       
+      const startTime = Date.now();
       try {
         const nodeResult = await this.executeNode(node, state, pipeline);
+        const duration = Date.now() - startTime;
+        
         state.nodes[node.id] = nodeResult;
         state.results.push({
           nodeId: node.id,
           type: node.type,
           success: true,
-          output: nodeResult
+          output: nodeResult,
+          duration
         });
+
+        if (processId) {
+          await ProcessDetailRepository.create({
+            processId,
+            nodeId: node.id,
+            nodeType: node.type,
+            success: true,
+            data: nodeResult,
+            responseTime: duration
+          }).catch(e => console.error(`Error guardando detalle del nodo ${node.id}:`, e));
+        }
 
         // Determinar siguiente nodo
         currentNodeId = node.next;
       } catch (error) {
+        const duration = Date.now() - startTime;
         console.error(`Error en nodo ${node.id}:`, error);
         state.results.push({
           nodeId: node.id,
           type: node.type,
           success: false,
-          error: error.message
+          error: error.message,
+          duration
         });
+        
+        if (processId) {
+          await ProcessDetailRepository.create({
+            processId,
+            nodeId: node.id,
+            nodeType: node.type,
+            success: false,
+            error: error.message,
+            responseTime: duration
+          }).catch(e => console.error(`Error guardando detalle de error en nodo ${node.id}:`, e));
+        }
         
         // Si hay un nodo de error definido, ir a él. Si no, detener.
         currentNodeId = node.onError || null;
