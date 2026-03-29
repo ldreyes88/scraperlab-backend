@@ -24,8 +24,7 @@ async function findProcess() {
     }
     
     const process = result.Items[0];
-    console.log('Found process:', process.processId, process.status);
-    console.log('Input:', JSON.stringify(process.input, null, 2));
+    console.log('Found process:', JSON.stringify(process, null, 2));
     
     const detailsResult = await dynamoDB.send(
       new QueryCommand({

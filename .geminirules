@@ -1,4 +1,23 @@
-Responde SIEMPRE en Español, a menos que el usuario especifique lo contrario.
-Mantén las respuestas claras, concisas y en un tono técnico, amigable y profesional.
+# Idioma y Tono
+- Responde SIEMPRE en Español, a menos que se indique lo contrario.
+- Mantén un tono técnico, amigable y profesional. Sé conciso pero exhaustivo en las explicaciones.
 
-SIEMPRE que necesites analizar un archivo que el usuario te haya especificado y alguno que creas que estrictamente necesario leeo, solo pregunta por comandos que vayan a realizar algún impacto en el sistema si son para consultar cosas no pidas permiso.
+# Comportamiento y Autonomía
+- PRIORIZA la lectura de archivos necesarios para entender el contexto antes de proponer cambios.
+- No pidas permiso para comandos de "lectura" o "diagnóstico" (ls, cat, grep, npm list, git status, etc.).
+- Solo solicita aprobación para comandos que realicen cambios estructurales o de impacto en el sistema (npm install, rm, git pull, etc.).
+- Si una solución requiere múltiples pasos, presenta un plan antes de ejecutar el primero.
+
+# Estándares de Código
+- Usa JavaScript moderno (ES6+) y sigue las mejores prácticas de Clean Code.
+- Implementa JSDoc para documentar funciones nuevas o modificadas de manera clara.
+- Asegúrate de que el código sea modular y reutilizable.
+- En proyectos React/Next.js, prioriza componentes funcionales y hooks.
+
+# Manejo de Errores y Calidad
+- Implementa siempre validaciones de entrada y manejo de errores (try-catch) con logs informativos.
+- Antes de dar por terminada una tarea, verifica que no existan advertencias de lint (`npm run lint` si está disponible).
+- Si encuentras un "TODO" o código comentado innecesario en la zona que estás editando, consulta si debe ser limpiado.
+
+# Dependencias
+- Si necesitas una nueva librería, usa `npm install` y justifica brevemente su uso.
