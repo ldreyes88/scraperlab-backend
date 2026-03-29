@@ -132,13 +132,13 @@ app.delete('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pi
 app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipeline);
 
 // 📊 Process endpoints (admin y usuarios pueden ver sus propios logs)
-app.get('/api/process', verifyToken, requireRole(['admin', 'user']), processHandler.getLogs);
-app.get('/api/process/:processId/details', verifyToken, requireRole(['admin', 'user']), processHandler.getBatchDetails);
+app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
+app.get('/api/process/:processId/details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
 app.get('/api/process/:processId/status', verifyAuth, processHandler.getProcessStatus);
-app.get('/api/process/domain/:domainId', verifyToken, requireRole(['admin', 'user']), processHandler.getLogsByDomain);
-app.get('/api/process/stats', verifyToken, requireRole(['admin']), processHandler.getStats);
-app.get('/api/process/stats/domain/:domainId', verifyToken, requireRole(['admin']), processHandler.getDomainStats);
-app.delete('/api/process/:logId', verifyToken, requireRole(['admin']), processHandler.deleteLog);
+app.get('/api/process/domain/:domainId', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogsByDomain);
+app.get('/api/process/stats', verifyAuth, requireRole(['admin', 'api_user']), processHandler.getStats);
+app.get('/api/process/stats/domain/:domainId', verifyAuth, requireRole(['admin', 'api_user']), processHandler.getDomainStats);
+app.delete('/api/process/:logId', verifyAuth, requireRole(['admin']), processHandler.deleteLog);
 
 // 🧩 Nodes Library (solo admin)
 const nodesHandler = require('./src/handlers/nodes');
