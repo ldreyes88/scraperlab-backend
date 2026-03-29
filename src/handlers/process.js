@@ -4,10 +4,15 @@ exports.getLogs = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    // SOLO filtrar por userId si viene explícitamente en la query
-    // Los datos antiguos no tienen userId, así que no filtrar por defecto
-    const userId = req.query.userId; 
-    const processType = req.query.processType; // 'simple' o 'batch'
+    // IMPORTANTE: Si es api_user o user (externo), forzamos el filtrado por su propio userId
+    // Esto asegura que Oferty solo vea sus propios procesos.
+    let userId = req.query.userId;
+    if (req.user && req.user.role !== 'admin') {
+      userId = req.user.userId;
+      console.log(`[Process Handler] Filtrado forzado de userId ${userId} para rol ${req.user.role}`);
+    }
+
+    const processType = req.query.processType; // Ahora acepta 'pipeline,product_monitoring'
     const from = req.query.from;
     const to = req.query.to;
     const search = req.query.search; // Búsqueda por dominio/URL

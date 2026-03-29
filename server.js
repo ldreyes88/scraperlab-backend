@@ -134,6 +134,7 @@ app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipel
 // 📊 Process endpoints (admin y usuarios pueden ver sus propios logs)
 app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
 app.get('/api/process/:processId/details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
+app.get('/api/process/:processId/batch-details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
 app.get('/api/process/:processId/status', verifyAuth, processHandler.getProcessStatus);
 app.get('/api/process/domain/:domainId', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogsByDomain);
 app.get('/api/process/stats', verifyAuth, requireRole(['admin', 'api_user']), processHandler.getStats);

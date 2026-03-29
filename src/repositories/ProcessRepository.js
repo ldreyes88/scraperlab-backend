@@ -216,9 +216,10 @@ class ProcessRepository {
         filteredItems = filteredItems.filter(item => item.userId === filters.userId);
       }
 
-      // Filtro por tipo de proceso
+      // Filtro por tipo de proceso (soporta múltiples separados por coma)
       if (filters.processType) {
-        filteredItems = filteredItems.filter(item => item.processType === filters.processType);
+        const types = filters.processType.split(',');
+        filteredItems = filteredItems.filter(item => types.includes(item.processType));
       }
 
       // Filtro por fecha (en memoria) - usa zona horaria de Colombia via time.js
