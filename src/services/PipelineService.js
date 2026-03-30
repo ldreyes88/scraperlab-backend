@@ -79,7 +79,7 @@ class PipelineService {
         state.results.push({
           nodeId: node.id,
           type: node.type,
-          success: true,
+          success: nodeResult?.success !== false,
           output: nodeResult,
           duration
         });
@@ -89,10 +89,14 @@ class PipelineService {
             processId,
             nodeId: node.id,
             nodeType: node.type,
-            success: true,
+            success: nodeResult?.success !== false,
             data: nodeResult,
             responseTime: duration
           }).catch(e => console.error(`Error guardando detalle del nodo ${node.id}:`, e));
+        }
+
+        if (nodeResult?.success === false) {
+          throw new Error(nodeResult.error ? JSON.stringify(nodeResult.error) : `El nodo ${node.id} reportó un fallo sin detalles`);
         }
 
         // Determinar siguiente nodo
@@ -121,17 +125,21 @@ class PipelineService {
         
         // Si hay un nodo de error definido, ir a él. Si no, detener.
         currentNodeId = node.onError || null;
-        if (!currentNodeId) break; 
       }
 
       // Actualizar progreso en el repositorio de procesos si aplica
       if (processId) {
         await ProcessRepository.updateSteps(processId, state.results);
       }
+      
+      // Si no hay nodo siguiente (por flujo normal o error sin handler), detenemos
+      if (!currentNodeId) break;
     }
 
     if (processId) {
-      await ProcessRepository.updateStatus(processId, 'completed');
+      // Determinar el status final analizando si hubo error
+      const hasFailedStep = state.results.some(r => !r.success);
+      await ProcessRepository.updateStatus(processId, hasFailedStep ? 'failed' : 'completed');
     }
 
     state.endTime = nowColombiaISO();
@@ -331,8 +339,7 @@ class PipelineService {
       return {
         success: true,
         status: response.status,
-        data: response.data,
-        headers: response.headers
+        data: response.data
       };
     } catch (error) {
       const status = error.response?.status || 500;
