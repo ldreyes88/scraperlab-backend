@@ -258,11 +258,27 @@ class ProcessRepository {
       // Filtro de búsqueda
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
-        filteredItems = filteredItems.filter(item => 
-          item.domain?.toLowerCase().includes(searchLower) ||
-          item.url?.toLowerCase().includes(searchLower) ||
-          item.domainId?.toLowerCase().includes(searchLower)
-        );
+        filteredItems = filteredItems.filter(item => {
+          const domain = item.domain?.toLowerCase() || '';
+          const url = item.url?.toLowerCase() || '';
+          const domainId = item.domainId?.toLowerCase() || '';
+          const sku = item.input?.sku?.toLowerCase() || '';
+          const family = item.input?.product_family_name?.toLowerCase() || '';
+          const pipelineId = item.pipelineId?.toLowerCase() || '';
+          const jobName = item.jobName?.toLowerCase() || '';
+          const processId = item.processId?.toLowerCase() || '';
+          const logId = item.logId?.toLowerCase() || '';
+
+          return domain.includes(searchLower) ||
+                 url.includes(searchLower) ||
+                 domainId.includes(searchLower) ||
+                 sku.includes(searchLower) ||
+                 family.includes(searchLower) ||
+                 pipelineId.includes(searchLower) ||
+                 jobName.includes(searchLower) ||
+                 processId.includes(searchLower) ||
+                 logId.includes(searchLower);
+        });
       }
 
       // Ordenar por timestamp (descendente - más reciente primero)

@@ -59,6 +59,9 @@ jobs:
           COGNITO_CLIENT_SECRET: ${{ secrets.COGNITO_CLIENT_SECRET }}
           COGNITO_DOMAIN: ${{ secrets.COGNITO_DOMAIN }}
           COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OFERTY_INTERNAL_API_URL: ${{ secrets.OFERTY_INTERNAL_API_URL }}
+          OFERTY_INTERNAL_API_KEY: ${{ secrets.OFERTY_INTERNAL_API_KEY }}
 
       - name: Get API Gateway URL
         id: api_url
