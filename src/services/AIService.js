@@ -11,13 +11,18 @@ class AIService {
     this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey, { apiVersion: 'v1' }) : null;
   }
 
-  async generateContent(prompt, modelName = 'gemini-1.5-flash', config = {}) {
+  async generateContent(prompt, modelName = 'gemini-2.5-flash', config = {}) {
     if (!this.genAI) {
       throw new Error('Google Generative AI no inicializado - Falta API Key');
     }
 
-    // Limpieza de nombre de modelo por si acaso
-    const cleanModelName = modelName?.trim() || 'gemini-1.5-flash';
+    // Limpieza de nombre y migración automática desde 1.5 (retirados) a 2.5
+    let cleanModelName = modelName?.trim() || 'gemini-2.5-flash';
+    if (cleanModelName === 'gemini-1.5-flash' || cleanModelName.includes('1.5-flash')) {
+      cleanModelName = 'gemini-2.5-flash';
+    } else if (cleanModelName === 'gemini-1.5-pro' || cleanModelName.includes('1.5-pro')) {
+      cleanModelName = 'gemini-2.5-pro';
+    }
     
     try {
       const model = this.genAI.getGenerativeModel({ 
@@ -38,7 +43,7 @@ class AIService {
     }
   }
 
-  async generateJSON(prompt, modelName = 'gemini-1.5-flash', config = {}) {
+  async generateJSON(prompt, modelName = 'gemini-2.5-flash', config = {}) {
     // Forzar respuesta JSON mediante el prompt por ahora
     const jsonPrompt = `${prompt}\n\nResponde ÚNICAMENTE con un objeto JSON válido.`;
     const response = await this.generateContent(jsonPrompt, modelName, config);
