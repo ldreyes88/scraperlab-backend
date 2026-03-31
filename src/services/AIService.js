@@ -7,6 +7,7 @@ class AIService {
     if (!this.apiKey) {
       console.warn('GEMINI_API_KEY no configurado en variables de entorno');
     }
+    // Usamos v1 para mayor estabilidad con modelos 1.5
     this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey) : null;
   }
 
@@ -15,9 +16,12 @@ class AIService {
       throw new Error('Google Generative AI no inicializado - Falta API Key');
     }
 
+    // Limpieza de nombre de modelo por si acaso
+    const cleanModelName = modelName?.trim() || 'gemini-1.5-flash';
+    
     try {
       const model = this.genAI.getGenerativeModel({ 
-        model: modelName,
+        model: cleanModelName,
         generationConfig: {
           temperature: config.temperature ?? 0.7,
           topP: config.topP ?? 0.95,
