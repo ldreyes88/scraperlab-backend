@@ -8,7 +8,7 @@ class AIService {
       console.warn('GEMINI_API_KEY no configurado en variables de entorno');
     }
     // Usamos v1 para mayor estabilidad con modelos 1.5
-    this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey) : null;
+    this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey, { apiVersion: 'v1' }) : null;
   }
 
   async generateContent(prompt, modelName = 'gemini-1.5-flash', config = {}) {
