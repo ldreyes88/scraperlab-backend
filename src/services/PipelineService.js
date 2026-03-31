@@ -370,7 +370,10 @@ class PipelineService {
       let current = state;
       
       for (const part of parts) {
-        if (current[part] === undefined) return match; // Dejar original si no existe
+        if (!current || current[part] === undefined) {
+          console.warn(`[Pipeline] Variable {{${path.trim()}}} no resuelta. Falta '${part}' en el estado.`);
+          return match; // Dejar original si no existe
+        }
         current = current[part];
       }
       
