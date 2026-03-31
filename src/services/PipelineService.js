@@ -103,36 +103,40 @@ class PipelineService {
         currentNodeId = node.next;
       } catch (error) {
         const duration = Date.now() - startTime;
-        console.error(`Error en nodo ${node.id}:`, error);
-        state.results.push({
-          nodeId: node.id,
-          type: node.type,
-          success: false,
-          error: error.message,
-          duration
-        });
-        
-        if (processId) {
-          await ProcessDetailRepository.create({
-            processId,
+        console.error(`[Pipeline Error] pipeline: ${pipelineId} | process: ${processId} | node: ${node.id} (${node.type}) - Details:`, error.message);
+        // Ya se registró el error si el try falló limpiamente con success: false,
+        // pero si fue una excepción directa, lo registramos.
+        if (!state.results.find(r => r.nodeId === node.id && r.success === false)) {
+          state.results.push({
             nodeId: node.id,
-            nodeType: node.type,
+            type: node.type,
             success: false,
             error: error.message,
-            responseTime: duration
-          }).catch(e => console.error(`Error guardando detalle de error en nodo ${node.id}:`, e));
+            duration
+          });
+
+          if (processId) {
+            await ProcessDetailRepository.create({
+              processId,
+              nodeId: node.id,
+              nodeType: node.type,
+              success: false,
+              error: error.message,
+              responseTime: duration
+            }).catch(e => console.error(`Error guardando detalle de error en nodo ${node.id}:`, e));
+          }
         }
-        
-        // Si hay un nodo de error definido, ir a él. Si no, detener.
+
+        // Determinar siguiente paso desde el error handler
         currentNodeId = node.onError || null;
       }
-
+      
       // Actualizar progreso en el repositorio de procesos si aplica
       if (processId) {
         await ProcessRepository.updateSteps(processId, state.results);
       }
       
-      // Si no hay nodo siguiente (por flujo normal o error sin handler), detenemos
+      // Si no hay nodo siguiente, rompemos el ciclo
       if (!currentNodeId) break;
     }
 
