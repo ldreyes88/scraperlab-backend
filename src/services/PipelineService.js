@@ -313,6 +313,13 @@ class PipelineService {
       headers[key] = this.resolveTemplate(template, state);
     }
 
+    // Auto-inyectar API key interna si es para Oferty
+    const internalUrl = process.env.OFERTY_INTERNAL_API_URL;
+    const internalKey = process.env.OFERTY_INTERNAL_API_KEY;
+    if (internalUrl && url.startsWith(internalUrl) && internalKey && !headers['x-internal-api-key']) {
+      headers['x-internal-api-key'] = internalKey;
+    }
+
     // Resolver body si aplica
     let data = null;
     if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) && bodyTemplate) {
