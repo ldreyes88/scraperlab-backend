@@ -8,7 +8,7 @@ async function checkRecentProcess() {
     const result = await dynamoDB.send(
       new ScanCommand({
         TableName: TABLES.PROCESS,
-        Limit: 5
+        Limit: 50
       })
     );
     

@@ -3,15 +3,20 @@ const { dynamoDB, TABLES } = require('./src/config/database');
 const { QueryCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
 async function findProcess() {
-  const targetId = '2b71f125-9d3e-43ef-b73a-412be8f04125'; // Guessing full UUID or partial
+  const targetIdInput = process.argv[2];
+  if (!targetIdInput) {
+    console.error('Usage: node find_process_details.js <processId>');
+    return;
+  }
+  
   try {
-    console.log('Searching for process starts with 2b71f125...');
+    console.log(`Searching for process: ${targetIdInput}...`);
     const result = await dynamoDB.send(
       new ScanCommand({
         TableName: TABLES.PROCESS,
         FilterExpression: 'begins_with(processId, :pid)',
         ExpressionAttributeValues: {
-          ':pid': '2b71f125'
+          ':pid': targetIdInput.substring(0, 8)
         }
       })
     );
