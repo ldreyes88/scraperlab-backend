@@ -4,7 +4,7 @@
 Mantener un catálogo y parear productos en los comparadores de precios requiere un esfuerzo manual brutal: buscar un producto, validar correctamente sus especificaciones, buscarlo tienda por tienda (Amazon, MercadoLibre, Falabella), verificar que el enlace no sea de una "funda" o un "accesorio".
 
 ## 💡 La Solución: Gemini-Powered Pipeline
-Implementar un **Pipeline Agéntico (AI Agent)** integrado en **ScraperLab** que use la **API de Gemini (1.5 Pro/Flash)** para orquestar la inteligencia operativa y automatizar el proceso de búsqueda y pareado de productos, basándose en la estructura **Single-Table Design** de DynamoDB de Oferty. Utiliza @gestion-pipeline-nodos.md para saber como crear cada cosa "Nodos y Pipelines".
+Implementar un **Pipeline Agéntico (AI Agent)** integrado en **ScraperLab** que use la **API de Gemini (2.5 Pro/Flash)** para orquestar la inteligencia operativa y automatizar el proceso de búsqueda y pareado de productos, basándose en la estructura **Single-Table Design** de DynamoDB de Oferty. Utiliza @gestion-pipeline-nodos.md para saber como crear cada cosa "Nodos y Pipelines".
 
 ---
 
@@ -64,14 +64,14 @@ Esta es la configuración JSON representativa en `ScraperLab-Pipelines` para gen
       "config": {
         "method": "GET",
         "url": "https://api.oferty.com.co/api/internal/products/search?q={{input.product_family_name}}",
-        "headers": { "x-api-key": "{{config.OFERTY_INTERNAL_API_KEY}}" }
+        "headers": { "x-internal-api-key": "{{config.OFERTY_INTERNAL_API_KEY}}" }
       },
       "next": "ai-generate-catalog"
     },
     "ai-generate-catalog": {
       "type": "AI_PROMPT",
       "config": {
-        "model": "gemini-1.5-pro",
+        "model": "gemini-2.5-pro",
         "isJson": true,
         "promptTemplate": "Genera el catálogo técnico (Familia y max 4 variaciones) para '{{input.product_family_name}}'. \n\nBASE DE CONOCIMIENTO EXISTENTE EN OFERTY PARA ESTE TÉRMINO: {{nodes.fetch-knowledge.response}}\n\nSi la familia ya existe en la base de conocimiento con sus UUID y nombres, respétalos y propon solo variantes nuevas. Sigue estrictamente el JSON schema del modelo de Oferty..."
       },
@@ -92,7 +92,7 @@ Esta es la configuración JSON representativa en `ScraperLab-Pipelines` para gen
       "config": {
         "method": "POST",
         "url": "https://api.oferty.com.co/api/internal/ai/ingest-catalog",
-        "headers": { "x-api-key": "{{config.OFERTY_INTERNAL_API_KEY}}" },
+        "headers": { "x-internal-api-key": "{{config.OFERTY_INTERNAL_API_KEY}}" },
         "bodyTemplate": "{{nodes.map-payload.mapped_data}}"
       },
       "next": null
@@ -102,6 +102,6 @@ Esta es la configuración JSON representativa en `ScraperLab-Pipelines` para gen
 ```
 
 ## 🛠 Stack Técnico
-- **Modelo:** `gemini-1.5-flash` para tareas rápidas de matching y `gemini-1.5-pro` para generación de catálogo estructurado y jerarquías (Familia/Producto).
+- **Modelo:** `gemini-2.5-flash` para tareas rápidas de matching y `gemini-2.5-pro` para generación de catálogo estructurado y jerarquías (Familia/Producto). El motor de ScraperLab realiza la migración automática de peticiones legacy de 1.5 a 2.5 de manera transparente.
 - **Integración:** ScraperLab ya no actúa como un cliente directo de DynamoDB, sino como un microservicio que interactúa HTTP/REST mediante API Keys contra el API Gateway y Lambdas subyacentes de Oferty (`oferty-backend-structure.txt`).
 - **Nodos:** `API_REQUEST` se añade a la librería de ScraperLab para soportar comunicaciones nativas.

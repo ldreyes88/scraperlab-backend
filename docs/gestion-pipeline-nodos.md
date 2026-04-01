@@ -35,7 +35,7 @@ Punto de entrada. Captura los datos iniciales.
 ### 2. AI_PROMPT (Agente Inteligente)
 Utiliza modelos de lenguaje para procesar información.
 *   **Config**:
-    *   `model`: Modelo a usar (ej: `gemini-1.5-flash`).
+    *   `model`: Modelo a usar (ej: `gemini-2.5-flash`, `gemini-2.5-pro`). El motor realiza migración automática de nombres antiguos (1.5) a los actuales 2.5.
     *   `promptTemplate`: Texto con variables tipo `{{input.field}}` o `{{nodes.id_anterior.field}}`.
     *   `isJson`: `true` si se espera una respuesta estructurada.
 *   **Dato de salida**: El texto o JSON generado por la IA.
@@ -71,6 +71,7 @@ Realiza peticiones HTTP a servidores externos o servicios propios.
     *   `method`: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
     *   `bodyTemplate`: JSON para el cuerpo de la petición (POST/PUT/PATCH).
     *   `headers`: Objeto de cabeceras dinámicas.
+*   **Seguridad Automática**: Si la URL es de la API Interna de Oferty (coincide con el base URL interno), el motor inyecta automáticamente el header `x-internal-api-key` si no está presente.
 
 ---
 
@@ -78,11 +79,11 @@ Realiza peticiones HTTP a servidores externos o servicios propios.
 
 El motor utiliza el motor de templates `{{ }}` para inyectar datos dinámicamente en cualquier campo de la configuración:
 
-| Origen | Sintaxis | Ejemplo |
-| :--- | :--- | :--- |
-| Entrada Inicial | `{{input.campo}}` | `{{input.product_name}}` |
-| Nodo Anterior | `{{nodes.id_del_nodo.campo}}` | `{{nodes.scraper.results[0].price}}` |
-| Proceso Global | `{{config.STAGE}}` | `{{config.STAGE}}` |
+| Origen | Sintaxis | Ejemplo | Nota |
+| :--- | :--- | :--- | :--- |
+| Entrada Inicial | `{{input.campo}}` | `{{input.product_name}}` | No envolver el input en un objeto extra |
+| Nodo Anterior | `{{nodes.id_del_nodo.campo}}` | `{{nodes.scraper.results[0].price}}` | |
+| Proceso Global | `{{config.STAGE}}` | `{{config.STAGE}}` | Variables de entorno |
 
 ---
 

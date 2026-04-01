@@ -31,6 +31,7 @@ class AIService {
           temperature: config.temperature ?? 0.7,
           topP: config.topP ?? 0.95,
           maxOutputTokens: config.max_output_tokens ?? 2048,
+          responseMimeType: config.responseMimeType || 'text/plain'
         }
       });
 
@@ -44,13 +45,13 @@ class AIService {
   }
 
   async generateJSON(prompt, modelName = 'gemini-2.5-flash', config = {}) {
-    // Forzar respuesta JSON mediante el prompt por ahora
-    const jsonPrompt = `${prompt}\n\nResponde ÚNICAMENTE con un objeto JSON válido.`;
-    const response = await this.generateContent(jsonPrompt, modelName, config);
+    // Forzamos modo JSON nativo para mayor precisión
+    const jsonConfig = { ...config, responseMimeType: 'application/json' };
+    const response = await this.generateContent(prompt, modelName, jsonConfig);
     
     try {
-      // Limpiar Markdown si existe (vienen con ```json ... ``` a veces)
-      const cleaned = response.replace(/```json|```/g, '').trim();
+      // Limpiar Markdown si existe (fallback por si acaso)
+      const cleaned = response.replace(/```(json)?|```/gi, '').trim();
       return JSON.parse(cleaned);
     } catch (error) {
       console.error('Error parsing JSON from Gemini:', response);
