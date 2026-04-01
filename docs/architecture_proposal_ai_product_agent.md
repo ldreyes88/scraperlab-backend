@@ -25,7 +25,7 @@ Implementar un **Pipeline Agéntico (AI Agent)** integrado en **ScraperLab** que
    - **Regla de Negocio:** Autogenera un máximo de 4 productos/variantes iniciales por familia.
 4. **Inyección vía Internal API (Oferty Backend):**
    - **Cambio Arquitectónico:** ScraperLab *no* escribe directo en DynamoDB, sino que actúa como un cliente externo utilizando una Internal API Key.
-   - Envía el JSON generado en un POST al backend de Oferty (ej. `oferty-backend/src/handlers/internal.js` -> `/api/internal/ai/draft-product`).
+   - Envía el JSON generado en un POST al backend de Oferty (ej. `oferty-backend/src/handlers/internal-ai.js` -> `/api/internal/ai/catalogs`).
    - El backend de Oferty inserta los registros con la Sort Key nativa y correcta (`SK: METADATA` o `SK: SPECS#GENERIC`) asegurando la integridad, pero inicializados con el campo `active: false`. Esto previene que se muestren en el Front-end de producción, pero preserva la validez de la clave principal para cuando se active.
 
 ### Fase 2: El Cazador (Search + Gemini Entity Matcher)
@@ -91,7 +91,7 @@ Esta es la configuración JSON representativa en `ScraperLab-Pipelines` para gen
       "type": "API_REQUEST", 
       "config": {
         "method": "POST",
-        "url": "https://api.oferty.com.co/api/internal/ai/ingest-catalog",
+        "url": "https://api.oferty.com.co/api/internal/ai/catalogs",
         "headers": { "x-internal-api-key": "{{config.OFERTY_INTERNAL_API_KEY}}" },
         "bodyTemplate": "{{nodes.map-payload.mapped_data}}"
       },

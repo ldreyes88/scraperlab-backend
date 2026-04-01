@@ -372,6 +372,28 @@ class PipelineService {
   resolveTemplate(template, state) {
     if (typeof template !== 'string') return template;
     
+    // Si el template es exactamente un tag {{variable}}, devolvemos el valor crudo (obj, array, etc)
+    const trimmed = template.trim();
+    const tagMatch = trimmed.match(/^\{\{([^}]+)\}\}$ /);
+    
+    if (tagMatch && !trimmed.includes('}} {{')) {
+      const path = tagMatch[1].trim();
+      const parts = path.split('.');
+      let current = state;
+      let found = true;
+      
+      for (const part of parts) {
+        if (!current || current[part] === undefined) {
+          found = false;
+          break;
+        }
+        current = current[part];
+      }
+      
+      if (found) return current;
+    }
+    
+    // Reemplazo estándar para templates compuestos (devuelve siempre string)
     return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
       const parts = path.trim().split('.');
       let current = state;
@@ -379,7 +401,7 @@ class PipelineService {
       for (const part of parts) {
         if (!current || current[part] === undefined) {
           console.warn(`[Pipeline] Variable {{${path.trim()}}} no resuelta. Falta '${part}' en el estado.`);
-          return match; // Dejar original si no existe
+          return match;
         }
         current = current[part];
       }
