@@ -374,7 +374,7 @@ class PipelineService {
     
     // Si el template es exactamente un tag {{variable}}, devolvemos el valor crudo (obj, array, etc)
     const trimmed = template.trim();
-    const tagMatch = trimmed.match(/^\{\{([^}]+)\}\}$ /);
+    const tagMatch = trimmed.match(/^\{\{(.+?)\}\}$ /);
     
     if (tagMatch && !trimmed.includes('}} {{')) {
       const path = tagMatch[1].trim();
