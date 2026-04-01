@@ -30,7 +30,7 @@ class AIService {
         generationConfig: {
           temperature: config.temperature ?? 0.7,
           topP: config.topP ?? 0.95,
-          maxOutputTokens: config.max_output_tokens ?? 2048,
+          maxOutputTokens: config.max_output_tokens ?? 8192,
           responseMimeType: config.responseMimeType || 'text/plain'
         }
       });
@@ -45,8 +45,12 @@ class AIService {
   }
 
   async generateJSON(prompt, modelName = 'gemini-2.5-flash', config = {}) {
-    // Forzamos modo JSON nativo para mayor precisión
-    const jsonConfig = { ...config, responseMimeType: 'application/json' };
+    // Forzamos modo JSON nativo y una temperatura más baja para mayor precisión técnica
+    const jsonConfig = { 
+      temperature: 0.4,
+      ...config, 
+      responseMimeType: 'application/json' 
+    };
     const response = await this.generateContent(prompt, modelName, jsonConfig);
     
     try {
