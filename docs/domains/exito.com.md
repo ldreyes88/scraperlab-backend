@@ -18,7 +18,8 @@ Información técnica y estrategias de extracción para el dominio **exito.com**
 - **Selectores:**
   - `containerSelector`: `article[class*='productCard_productCard']`
   - `titleSelector`: `h3[class*='styles_name']`
-  - `priceSelector`: `[class*='allieds-display_bestDiscount'] [class*='price_fs-price']`
+  - `priceSelector`: `[class*='price_fs-price']`
+  - `originalPriceSelector`: `[class*='product-price_fs-price-listing']`
   - `urlSelector`: `a[class*='productCard_productLinkInfo']`
 
 ### 2. Detalle de Producto (`detail`)
@@ -27,8 +28,10 @@ Información técnica y estrategias de extracción para el dominio **exito.com**
 - **Optimización:** **No requiere renderizado**. Se deben omitir los campos `render` y `premium` en la configuración de `detail`.
 - **Selectores:**
   - `title`: `h1[class*='product-title_product-title__heading']`
-  - `jsonLd.pricePath`: `offers.price`
-  - `jsonLd.titlePath`: `name`
+  - `price`: `[class*='price_fs-price']`
+  - `originalPrice`: `[class*='product-price_fs-price-listing']`
+  - `jsonLd.pricePath`: `price`
+  - `jsonLd.originalPricePath`: `listPrice`
 
 ## Ejemplo de Configuración en Base de Datos
 

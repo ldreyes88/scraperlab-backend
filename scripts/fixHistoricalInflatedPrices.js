@@ -49,13 +49,14 @@ async function fixInflatedPrices() {
             const currentPrice = parseFloat(item.currentPrice || 0);
             const originalPrice = parseFloat(item.originalPrice || 0);
             
-            // Heurística: Si el precio es > 15,000,000 y termina en 0, es muy probable que sea el bug
-            // (La mayoría de iPhones están entre 3M y 10M)
-            if (currentPrice > 15000000) {
-                const newCurrentPrice = Math.round(currentPrice / 10);
-                const newOriginalPrice = originalPrice > 15000000 ? Math.round(originalPrice / 10) : originalPrice;
+            // Heurística: Si el precio es > 25,000,000 y termina en 0, es muy probable que sea el bug de Shopify (centavos)
+            // (La mayoría de iPhones están entre 2.5M y 10M, así que 250M+ es obvio)
+            if (currentPrice > 25000000) {
+                const newCurrentPrice = Math.round(currentPrice / 100);
+                const newOriginalPrice = originalPrice > 25000000 ? Math.round(originalPrice / 100) : originalPrice;
                 
                 console.log(`\n🛠️ Corrigiendo ${item.PK} (${item.name}):`);
+                console.log(`   - MP: ${item.SK.replace('MARKETPLACE#', '')}`);
                 console.log(`   - Precio actual: ${currentPrice} -> ${newCurrentPrice}`);
                 console.log(`   - URL: ${item.url}`);
 

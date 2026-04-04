@@ -137,27 +137,60 @@ class BaseDomainStrategy {
             }
             
             if (obj.offers) {
-              const offers = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
+              const allOffers = Array.isArray(obj.offers) ? obj.offers : [obj.offers];
               
-              // Si hay rutas personalizadas en config, usarlas
-              if (config.pricePath) {
-                const customPrice = this.getValueByPath(offers, config.pricePath);
-                if (customPrice) data.currentPrice = customPrice;
+              const offerPrices = [];
+              const offerHighPrices = [];
+              const offerListPrices = [];
+
+              for (const offer of allOffers) {
+                // 1. Si hay rutas personalizadas en config, usarlas
+                if (config.pricePath) {
+                  const customPrice = this.getValueByPath(offer, config.pricePath);
+                  if (customPrice && !data.currentPrice) data.currentPrice = customPrice;
+                }
+
+                if (config.originalPricePath) {
+                  const customOriginalPrice = this.getValueByPath(offer, config.originalPricePath);
+                  if (customOriginalPrice && !data.originalPrice) data.originalPrice = customOriginalPrice;
+                }
+
+                // 2. Recolectar valores para lógica de fallback inteligente
+                const p = parseFloat(offer.price || offer.lowPrice);
+                if (!isNaN(p)) offerPrices.push(p);
+
+                const hp = parseFloat(offer.highPrice);
+                if (!isNaN(hp)) offerHighPrices.push(hp);
+
+                const lp = parseFloat(offer.listPrice);
+                if (!isNaN(lp)) offerListPrices.push(lp);
               }
 
-              if (!data.currentPrice) {
-                if (offers.price && !data.currentPrice) data.currentPrice = offers.price;
-                if (offers.lowPrice && !data.currentPrice) data.currentPrice = offers.lowPrice;
-              }
-
-              if (config.originalPricePath) {
-                const customOriginalPrice = this.getValueByPath(offers, config.originalPricePath);
-                if (customOriginalPrice) data.originalPrice = customOriginalPrice;
+              // Fallbacks si no se encontró con rutas personalizadas
+              if (!data.currentPrice && offerPrices.length > 0) {
+                data.currentPrice = Math.min(...offerPrices);
               }
 
               if (!data.originalPrice) {
-                if (offers.highPrice && !data.originalPrice) data.originalPrice = offers.highPrice;
-                if (offers.listPrice && !data.originalPrice) data.originalPrice = offers.listPrice;
+                // Prioridad 1: listPrice (Común en VTEX/Exito)
+                if (offerListPrices.length > 0) {
+                  data.originalPrice = Math.max(...offerListPrices);
+                } 
+                // Prioridad 2: highPrice (Si es mayor al current)
+                else if (offerHighPrices.length > 0) {
+                  const maxHp = Math.max(...offerHighPrices);
+                  if (maxHp > (data.currentPrice || 0)) {
+                    data.originalPrice = maxHp;
+                  }
+                }
+                // Prioridad 3: Heurística de múltiples ofertas (Común en Falabella donde el segundo offer es el original)
+                else if (offerPrices.length > 1) {
+                  const maxP = Math.max(...offerPrices);
+                  const minP = Math.min(...offerPrices);
+                  if (maxP > minP) {
+                    data.originalPrice = maxP;
+                  }
+                }
               }
             }
           }
@@ -309,7 +342,12 @@ extractFromScripts($, patterns = []) {
     for (const content of scripts) {
       const match = content.match(p.regex);
       if (match) {
-        data[p.key] = match[1];
+        let value = match[1];
+        // Aplicar divisor si existe (útil para precios en centavos como Shopify/VTEX)
+        if (p.divisor && !isNaN(value)) {
+          value = parseFloat(value) / p.divisor;
+        }
+        data[p.key] = value;
         break; // Encontrado para esta clave custom, pasar a la siguiente
       }
     }
@@ -321,7 +359,12 @@ extractFromScripts($, patterns = []) {
     for (const content of scripts) {
       const match = content.match(p.regex);
       if (match) {
-        data[p.key] = match[1];
+        let value = match[1];
+        // Aplicar divisor si existe en el patrón default (aunque por ahora no hay)
+        if (p.divisor && !isNaN(value)) {
+          value = parseFloat(value) / p.divisor;
+        }
+        data[p.key] = value;
         break;
       }
     }

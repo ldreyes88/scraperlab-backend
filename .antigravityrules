@@ -4,7 +4,7 @@
 
 # Comportamiento y Autonomía
 - PRIORIZA la lectura de archivos necesarios para entender el contexto antes de proponer cambios.
-- No pidas permiso para comandos de "lectura" o "diagnóstico" (ls, cat, grep, npm list, git status, .env, txt, md, etc.) sobre todo si yo te lo incluyo en el promt o chat.
+- No pidas permiso para comandos de "lectura" o "diagnóstico": ls, cat, grep, npm list, git status, o archivos fotmato: env, txt, md, json,  etc. sobre todo si yo te lo incluyo en el promt o chat.
 - Solo solicita aprobación para comandos que realicen cambios estructurales o de impacto en el sistema (npm install, rm, git pull, etc.).
 - Si una solución requiere múltiples pasos, presenta un plan antes de ejecutar el primero.
 

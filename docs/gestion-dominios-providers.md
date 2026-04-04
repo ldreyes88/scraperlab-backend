@@ -74,11 +74,18 @@ Agrupados por estrategia:
     "nextData": { "productPath": "props.product" },
     "jsonLd": { "pricePath": "offers.price" },
     "scripts": [
-      { "key": "price", "regex": "\"price\":\\s*(\\d+)" }
+      { 
+        "key": "price", 
+        "regex": "\"price\":\\s*(\\d+)", 
+        "divisor": 100 
+      }
     ]
   }
 }
 ```
+
+> [!TIP]
+> **Uso del Divisor**: En plataformas como Shopify o VTEX, los precios en los scripts internos suelen estar en centavos (ej: `289900000` para $2.899.000). Usa el campo `"divisor": 100` en el patrón del script para que el sistema normalice el valor automáticamente.
 
 #### Search
 ```json
