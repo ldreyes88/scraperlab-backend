@@ -203,9 +203,30 @@ class PipelineService {
    * Manejador de SCRAPE_SEARCH
    */
   async handleScrapeSearch(node, state) {
-    const { domainIds, queryTemplate, limit = 5 } = node.config;
+    const { queryTemplate, limit = 5 } = node.config;
     const query = this.resolveTemplate(queryTemplate, state);
     
+    // Resolver domainIds dinámicamente si es un template
+    let domainIds = this.resolveTemplate(node.config.domainIds, state);
+    
+    // Asegurarse de que domainIds sea un array
+    if (!Array.isArray(domainIds)) {
+      if (typeof domainIds === 'string') {
+        try {
+          // Intentar parsear si viene como string JSON (ej: de un prompt de AI)
+          const parsed = JSON.parse(domainIds);
+          domainIds = Array.isArray(parsed) ? parsed : [domainIds];
+        } catch (e) {
+          // Si no es JSON, tratar como un ID único o lista separada por comas
+          domainIds = domainIds.includes(',') 
+            ? domainIds.split(',').map(d => d.trim()) 
+            : [domainIds];
+        }
+      } else {
+        domainIds = [];
+      }
+    }
+
     // Obtener configuraciones de los dominios involucrados
     const DomainConfigService = require('./DomainConfigService');
     
