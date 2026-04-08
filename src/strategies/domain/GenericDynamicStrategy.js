@@ -70,7 +70,10 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
         scripts: {
           flag: 'useScripts',
           execute: () => {
-            const data = this.extractFromScripts($, options.scriptPatterns);
+            const patterns = (selectors.scripts && selectors.scripts.length > 0) 
+              ? selectors.scripts 
+              : options.scriptPatterns;
+            const data = this.extractFromScripts($, patterns);
             if (data.currentPrice) method += '+Scripts';
             return data;
           }
