@@ -317,9 +317,9 @@ class BaseDomainStrategy {
 extractFromScripts($, patterns = []) {
   const data = {};
   const defaultPatterns = [
-    { key: 'currentPrice', regex: /"price":\s*[\"]?(\d+(?:\.\d+)?)/ },
-    { key: 'originalPrice', regex: /"(?:original|list|previous)Price":\s*[\"]?(\d+(?:\.\d+)?)/ },
-    { key: 'title', regex: /"name":\s*"([^"]+)"/ }
+    { key: 'currentPrice', regex: /["']?price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ },
+    { key: 'originalPrice', regex: /["']?(?:original|list|previous)Price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ },
+    { key: 'title', regex: /["']?name["']?\s*:\s*["']?([^"']+)["']?/ }
   ];
 
   // Convertir strings de regex a objetos RegExp si vienen de la DB
