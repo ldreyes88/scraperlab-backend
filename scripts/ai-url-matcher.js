@@ -4,9 +4,10 @@
 require('dotenv').config();
 const axios = require('axios');
 const cheerio = require('cheerio');
-const { GoogleGenAI, Type } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 const SCRAPER_API_KEY = process.env.SCRAPER_API_KEY;
 
 async function matchProductUrl(brandName, modelName) {
@@ -63,26 +64,12 @@ async function matchProductUrl(brandName, modelName) {
     Si ninguno es correcto, marca isMatchFound como false.
     `;
 
-    const aiResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    "isMatchFound": { type: Type.BOOLEAN, description: "¿Encontraste el enlace correcto verdadero?" },
-                    "winningUrl": { type: Type.STRING, description: "La URL exacta del candidato ganador" },
-                    "winningPrice": { type: Type.STRING, description: "Precio del producto ganador" },
-                    "reasoning": { type: Type.STRING, description: "Razonamiento corto de porqué elegiste este u omitiste los otros." }
-                },
-                required: ["isMatchFound", "reasoning"]
-            }
-        }
-    });
+    const result = await ai.generateContent(prompt);
+    const aiResponse = await result.response;
+    const aiData = JSON.parse(aiResponse.text());
 
     console.log("🤖 RESPUESTA Y DECISIÓN DE LA IA:");
-    console.log(JSON.parse(aiResponse.text));
+    console.log(aiData);
     console.log("\n🚀 Este resultado de 'winningUrl' es el que tu batch-process de producción necesita guardar en la BD.");
 
   } catch (error) {

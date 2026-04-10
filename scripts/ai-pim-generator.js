@@ -4,94 +4,80 @@
 require('dotenv').config();
 
 // Debes instalar: npm install @google/genai
-const { GoogleGenAI, Type } = require('@google/genai');
+const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 
-// Recomiendo encarecidamente Gemini 1.5 Pro para estructuración compleja
-const MODEL_NAME = 'gemini-2.5-flash'; 
+// Recomiendo usar Gemini Flash Lite Latest para evadir los servidores con alta demanda (error 503)
+const MODEL_NAME = 'gemini-flash-lite-latest'; 
 
 async function generateOfertyProduct(productQuery) {
-  // Asegurarse de tener la llave de API configurada en el root .env de scraperlab-backend
   if (!process.env.GEMINI_API_KEY) {
     console.error("❌ ERROR: No se encontró la variable GEMINI_API_KEY en tu .env");
-    console.log("Puedes conseguir una gratis en: https://aistudio.google.com/");
     return;
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({ 
+    model: MODEL_NAME,
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: SchemaType.OBJECT,
+        properties: {
+          family: {
+            type: SchemaType.OBJECT,
+            properties: {
+              familyName: { type: SchemaType.STRING, description: "Nombre de la familia (ej: iPhone 15 Series)" },
+              brand: { type: SchemaType.STRING, description: "Marca capitalizada" },
+              category: { type: SchemaType.STRING, description: "Categoría principal" },
+              genericSpecs: { type: SchemaType.OBJECT, description: "Specs compartidas por todos" }
+            },
+            required: ["familyName", "brand", "category", "genericSpecs"]
+          },
+          products: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                name: { type: SchemaType.STRING, description: "Nombre completo de la variante" },
+                variantType: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                specs: { type: SchemaType.OBJECT, description: "Specs técnicas completas" },
+                variantSpecs: { type: SchemaType.OBJECT, description: "Valores específicos de la variante" }
+              },
+              required: ["name", "variantType", "specs", "variantSpecs"]
+            }
+          }
+        },
+        required: ["family", "products"]
+      }
+    }
+  });
 
-  console.log(`🧠 Iniciando agente IA para el producto: "${productQuery}"...`);
+  console.log(`🧠 Iniciando PROMPT MAESTRO para: "${productQuery}"...`);
 
   const prompt = `
   Eres un experto en ecommerce y Head of Catalog para una tienda de Colombia.
-  Dado el siguiente nombre de producto que buscó el usuario: "${productQuery}", 
-  genera el perfil de datos estricto bajo nuestro formato en JSON.
+  Genera el catálogo técnico estricto para el término: "${productQuery}".
   
-  Instrucciones estrictas:
-  1. brandName debe ser capitalizado (Ej: Apple, Samsung).
-  2. category / parentCategory deben ser categorías de ecommerce lógicas (Ej: Celulares, Tecnología).
-  3. specs debe contener todas las especificaciones técnicas del equipo (procesador, ram, almacenamiento, cámara, batería, pantalla).
-  4. variants deben incluir variantes comunes de este equipo (como color y almacenamiento).
-  5. Asegúrate de generar un productFamilyId entendible, todo en minúscula y separado por guiones.
+  Instrucciones:
+  1. Identifica la familia correcta.
+  2. Genera hasta 4 variantes representativas (colores, capacidades).
+  3. Asegura que variantType sea siempre un array de strings.
+  4. Responde con el JSON estructurado.
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: prompt,
-      config: {
-        // Obligamos a Gemini a responder única y exclusivamente en el molde de DynamoDB
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            "name": { type: Type.STRING, description: "Nombre completo y atractivo de venta del producto base" },
-            "brandName": { type: Type.STRING, description: "Marca" },
-            "modelName": { type: Type.STRING, description: "Modelo específico sin la marca" },
-            "category": { type: Type.STRING, description: "Subcategoría, Ej: Celulares" },
-            "parentCategory": { type: Type.STRING, description: "Categoría padre, Ej: Tecnología" },
-            "productFamilyId": { type: Type.STRING, description: "Slug del producto. Ej: samsung-galaxy-s24-ultra" },
-            "description": { type: Type.STRING, description: "Breve descripción orientada a SEO y venta" },
-            "globalRating": { type: Type.NUMBER, description: "Valor aleatorio entre 4.0 y 5.0" },
-            "specs": { 
-              type: Type.OBJECT, 
-              // Podemos dejar que la IA deduzca las llaves libremente para mayor flexibilidad
-              // Pero en Structured Outputs, si forzamos el esquema, es mejor dejar un description claro:
-              description: "Objeto llave-valor con procesador, ram, almacenamiento, camara, etc."
-            },
-            "variantType": {
-              type: Type.ARRAY,
-              items: { type: Type.STRING },
-              description: "Lista de posibles strings de variantes. Ej: ['color', 'storage']"
-            }
-          },
-          required: ["name", "brandName", "modelName", "category", "parentCategory", "productFamilyId", "specs", "variantType"]
-        }
-      }
-    });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const productoGenerado = JSON.parse(response.text());
 
-    console.log("✅ JSON Generado Exitosamente por la IA:\n");
-    
-    // Parseamos el resultado que Gemini garantiza que es JSON
-    const productoGenerado = JSON.parse(response.text);
-    
-    // Aquí es donde ensamblas el registro definitivo de DynamoDB
-    const dyamoRecord = {
-      PK: `PRODUCT#PENDING`, // Inicialmente entra a revisión
-      SK: "METADATA",
-      ...productoGenerado,
-      updatableStatus: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    console.log(JSON.stringify(dyamoRecord, null, 2));
-    
-    console.log("\n🚀 Siguiente paso propuesto (Fase 2): Usar 'brandName', 'modelName' para buscar links automáticamente.");
+    console.log("✅ Catálogo Generado Exitosamente:\n");
+    console.log(JSON.stringify(productoGenerado, null, 2));
 
   } catch (error) {
     console.error("❌ Error de la IA:", error.message);
   }
 }
+// Ejemplo de Run local: node scripts/ai-pim-generator.js "Samsung S25 Ultra 512GB"
 
 // Ejemplo de Run local: node scripts/ai-pim-generator.js "Samsung S25 Ultra 512GB"
 const query = process.argv[2] || "Nintendo Switch OLED - Modelo Blanco";
