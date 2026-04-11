@@ -1,11 +1,11 @@
 require('dotenv').config();
-const { dynamoDB, TABLES } = require('./src/config/database');
+const { dynamoDB, TABLES } = require('../src/config/database');
 const { UpdateCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 
-const PIELINE_ID = 'gemini-catalog-builder';
+const PIPELINE_ID = 'gemini-catalog-builder';
 
 const SUPER_PROMPT = `# INSTRUCCIÓN DE GENERACIÓN DE CATÁLOGO (OFERTY AI)
-Actúa como un Ingeniero de Datos experto en el catálogo de Oferty. Tu objetivo es generar un JSON estructurado para el término: "{{input.product_family_name}}" basado en los resultados de búsqueda previos: {{nodes.rag_search.data.results}}.
+Actúa como un Ingeniero de Datos experto en el catálogo de Oferty. Tu objetivo es generar un JSON estructurado para el término: "{{input.product_family_name}}" basado en los resultados de búsqueda previos: {{nodes.Rag_Search.data.results}}.
 
 # CONTEXTO TÉCNICO (MODELO DE DATOS)
 Debes seguir este esquema de Single-Table Design:
@@ -60,31 +60,38 @@ async function updatePipeline() {
     // 1. Obtener pipeline actual
     const getResult = await dynamoDB.send(new GetCommand({
       TableName: TABLES.PIPELINES,
-      Key: { pipelineId: PIELINE_ID }
+      Key: { pipelineId: PIPELINE_ID }
     }));
     
     if (!getResult.Item) {
-      console.error('Pipeline no encontrado');
+      console.error(`Pipeline '${PIPELINE_ID}' no encontrado en la tabla ${TABLES.PIPELINES}`);
       return;
     }
     
     let pipeline = getResult.Item;
     
-    // 2. Localizar y actualizar el nodo gemini_cataloger
-    const nodeIndex = pipeline.nodes.findIndex(n => n.id === 'gemini_cataloger');
+    // 2. Localizar y actualizar el nodo Gemini_Cataloger (case sensitive matching)
+    const nodeIndex = pipeline.nodes.findIndex(n => n.id.toLowerCase() === 'gemini_cataloger' || n.id === 'AI_Cataloger');
+    
     if (nodeIndex === -1) {
-      console.error('Nodo gemini_cataloger no encontrado en el pipeline');
+      console.error('Nodo gemini_cataloger no encontrado. Nodos disponibles:', pipeline.nodes.map(n => n.id));
       return;
     }
     
-    pipeline.nodes[nodeIndex].config.promptTemplate = SUPER_PROMPT;
-    pipeline.nodes[nodeIndex].config.isJson = true;
-    pipeline.nodes[nodeIndex].config.model = 'gemini-2.5-flash'; // Tag estable en tu entorno para catálogo
+    const node = pipeline.nodes[nodeIndex];
+    console.log(`Actualizando nodo: ${node.id}`);
+    
+    node.config = {
+      ...node.config,
+      promptTemplate: SUPER_PROMPT,
+      isJson: true,
+      model: 'gemini-flash-lite-latest' // Usamos Flash Lite para evitar errores 503 por alta demanda
+    };
     
     // 3. Guardar cambios
     await dynamoDB.send(new UpdateCommand({
       TableName: TABLES.PIPELINES,
-      Key: { pipelineId: PIELINE_ID },
+      Key: { pipelineId: PIPELINE_ID },
       UpdateExpression: 'set nodes = :n, updatedAt = :u',
       ExpressionAttributeValues: {
         ':n': pipeline.nodes,

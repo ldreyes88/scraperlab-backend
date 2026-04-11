@@ -37,7 +37,7 @@ const pipelines = [
         id: "Gemini_Cataloger",
         type: "AI_PROMPT",
         config: {
-          model: "gemini-2.5-pro",
+          model: "gemini-flash-lite-latest",
           isJson: true,
           promptTemplate: `Eres un experto en ecommerce y Head of Catalog para una tienda de Colombia.
 Dado el siguiente nombre de producto que buscó el usuario: "{{input.product_family_name}}", 
@@ -92,7 +92,7 @@ Asegúrate de que variantType sea SIEMPRE un array de strings. El estado inicial
         id: "AI_Select_Sources",
         type: "AI_PROMPT",
         config: {
-          model: "gemini-2.5-flash",
+          model: "gemini-flash-lite-latest",
           isJson: true,
           promptTemplate: "Analiza el producto '{{input.name}}'. Selecciona los dominios más relevantes para buscar su precio en Colombia de esta lista: ['exito.com', 'mercadolibre.com.co', 'falabella.com.co', 'alkosto.com', 'ktronix.com']. Responde un JSON con el campo 'domainIds' (array)."
         },
@@ -112,7 +112,7 @@ Asegúrate de que variantType sea SIEMPRE un array de strings. El estado inicial
         id: "AI_Match_Offer",
         type: "AI_PROMPT",
         config: {
-          model: "gemini-2.5-flash",
+          model: "gemini-flash-lite-latest",
           isJson: true,
           promptTemplate: `Eres un asistente robótico para data scraping y control de calidad.
 El producto maestro que estamos buscando es: {{input.name}}.

@@ -11,18 +11,19 @@ class AIService {
     this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey, { apiVersion: 'v1' }) : null;
   }
 
-  async generateContent(prompt, modelName = 'gemini-2.5-flash', config = {}) {
+  async generateContent(prompt, modelName = 'gemini-flash-lite-latest', config = {}) {
     if (!this.genAI) {
       throw new Error('Google Generative AI no inicializado - Falta API Key');
     }
 
-    // Limpieza de nombre y migración automática desde 1.5 (retirados) a 2.5
-    let cleanModelName = modelName?.trim() || 'gemini-2.5-flash';
-    if (cleanModelName === 'gemini-1.5-flash' || cleanModelName.includes('1.5-flash')) {
-      cleanModelName = 'gemini-2.5-flash';
-    } else if (cleanModelName === 'gemini-1.5-pro' || cleanModelName.includes('1.5-pro')) {
-      cleanModelName = 'gemini-2.5-pro';
+    // Limpieza de nombre y migración automática para evitar 503 (High Demand)
+    let cleanModelName = modelName?.trim() || 'gemini-flash-lite-latest';
+    
+    // Si se solicita un modelo de alta demanda o una versión antigua, redirigimos a Flash Lite para estabilidad
+    if (cleanModelName.includes('2.5-flash') || cleanModelName.includes('1.5-flash')) {
+      cleanModelName = 'gemini-flash-lite-latest';
     }
+    
     
     try {
       const model = this.genAI.getGenerativeModel({ 
@@ -44,7 +45,7 @@ class AIService {
     }
   }
 
-  async generateJSON(prompt, modelName = 'gemini-2.5-flash', config = {}) {
+  async generateJSON(prompt, modelName = 'gemini-flash-lite-latest', config = {}) {
     // Forzamos modo JSON nativo y una temperatura más baja para mayor precisión técnica
     const jsonConfig = { 
       temperature: 0.4,
