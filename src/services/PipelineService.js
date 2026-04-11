@@ -76,10 +76,16 @@ class PipelineService {
         const duration = Date.now() - startTime;
         
         state.nodes[node.id] = nodeResult;
+        
+        // Detección inteligente de éxito para arrays (como SCRAPE_SEARCH) o objetos simples
+        const isSuccess = Array.isArray(nodeResult) 
+          ? nodeResult.some(r => r.success !== false) // Al menos uno exitoso en la lista
+          : nodeResult?.success !== false;
+
         state.results.push({
           nodeId: node.id,
           type: node.type,
-          success: nodeResult?.success !== false,
+          success: isSuccess,
           output: nodeResult,
           duration
         });
@@ -89,14 +95,14 @@ class PipelineService {
             processId,
             nodeId: node.id,
             nodeType: node.type,
-            success: nodeResult?.success !== false,
+            success: isSuccess,
             data: nodeResult,
             responseTime: duration
           }).catch(e => console.error(`Error guardando detalle del nodo ${node.id}:`, e));
         }
 
-        if (nodeResult?.success === false) {
-          throw new Error(nodeResult.error ? JSON.stringify(nodeResult.error) : `El nodo ${node.id} reportó un fallo sin detalles`);
+        if (!isSuccess) {
+          throw new Error(nodeResult.error ? JSON.stringify(nodeResult.error) : `El nodo ${node.id} no devolvió resultados satisfactorios`);
         }
 
         // Determinar siguiente nodo
@@ -395,7 +401,7 @@ class PipelineService {
     
     // Si el template es exactamente un tag {{variable}}, devolvemos el valor crudo (obj, array, etc)
     const trimmed = template.trim();
-    const tagMatch = trimmed.match(/^\{\{(.+?)\}\}$ /);
+    const tagMatch = trimmed.match(/^\{\{(.+?)\}\}$/);
     
     if (tagMatch && !trimmed.includes('}} {{')) {
       const path = tagMatch[1].trim();
