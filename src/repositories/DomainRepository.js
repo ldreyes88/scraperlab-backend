@@ -1,5 +1,5 @@
 const { dynamoDB, TABLES } = require('../config/database');
-const { GetCommand, PutCommand, ScanCommand, QueryCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
+const { GetCommand, PutCommand, ScanCommand, QueryCommand, DeleteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { nowColombiaISO } = require('../utils/time');
 
 /**
@@ -98,6 +98,9 @@ class DomainRepository {
         typeService: configData.typeService || existing?.typeService || ['scraping'],
         enabled: configData.enabled !== undefined ? configData.enabled : (existing?.enabled !== undefined ? existing.enabled : true),
         
+        status_service: configData.status_service || existing?.status_service || 'active',
+        last_scrape_error: configData.last_scrape_error || existing?.last_scrape_error || null,
+        
         createdAt: existing?.createdAt || nowColombiaISO(),
         updatedAt: nowColombiaISO()
       };
@@ -128,6 +131,33 @@ class DomainRepository {
     } catch (error) {
       console.error('Error deleting config:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Actualiza el estado de salud del scraping del dominio
+   * @param {string} domainId 
+   * @param {string} status - 'active' | 'failed'
+   * @param {string} error - Mensaje de error (opcional)
+   */
+  static async updateScrapeStatus(domainId, status, error = null) {
+    try {
+      const updateParams = {
+        TableName: TABLES.DOMAINS,
+        Key: { domainId },
+        UpdateExpression: 'SET status_service = :status, last_scrape_error = :error, updatedAt = :updatedAt',
+        ExpressionAttributeValues: {
+          ':status': status,
+          ':error': error,
+          ':updatedAt': nowColombiaISO()
+        }
+      };
+
+      await dynamoDB.send(new UpdateCommand(updateParams));
+      return true;
+    } catch (err) {
+      console.error(`[DomainRepository] Error updating status for ${domainId}:`, err);
+      return false; // No arrojamos para no bloquear el proceso principal
     }
   }
 }

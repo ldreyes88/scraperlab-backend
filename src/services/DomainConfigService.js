@@ -201,6 +201,8 @@ class DomainConfigService {
       customRateLimit: customRateLimit || null,
       countryCode: countryCode || configData.countryCode || configData.country || 'CO',
       typeService: configData.typeService || ['scraping'],
+      status_service: configData.status_service || 'active',
+      last_scrape_error: configData.last_scrape_error || null,
       enabled: enabled !== undefined ? enabled : true
     };
 
@@ -280,6 +282,13 @@ class DomainConfigService {
    */
   static async getDomainsByProvider(providerId) {
     return await DomainRepository.getByProvider(providerId);
+  }
+
+  /**
+   * Actualizar el estado de salud del scraping para un dominio
+   */
+  static async updateScrapeStatus(domainId, status, error = null) {
+    return await DomainRepository.updateScrapeStatus(domainId, status, error);
   }
 }
 

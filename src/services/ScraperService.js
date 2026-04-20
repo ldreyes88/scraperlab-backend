@@ -36,6 +36,26 @@ class ScraperService {
 
       const responseTime = Date.now() - startTime;
 
+      // 3b. Determinar el estado de salud del servicio (status_service) INTELLIGENT CLEANING
+      // Marcamos como fallido si la estrategia retorna success: false O si es un detail y no extrajo título
+      let finalStatus = 'active';
+      let scrapeError = null;
+
+      if (!result.success) {
+        finalStatus = 'failed';
+        scrapeError = result.error || 'Unknown extraction error';
+      } else if (scrapeType === 'detail' && (!result.details?.title || result.details?.title === '')) {
+        // Si es una página de detalle y no pudimos extraer el título, es un fallo de scraping
+        // aunque el provider haya respondido 200 OK.
+        finalStatus = 'failed';
+        scrapeError = 'Extraction failed: Title not found (Possible selector issue or blocked content)';
+      }
+
+      // Actualizar el estado del dominio en segundo plano
+      DomainConfigService.updateScrapeStatus(domain, finalStatus, scrapeError).catch(err => 
+        console.error(`[ScraperService] Error updating status for ${domain}:`, err)
+      );
+
       // 4. Guardar log con información del tipo de scraping y usuario
       if (saveLog) {
         await ProcessRepository.create({
@@ -68,6 +88,11 @@ class ScraperService {
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
+      // Actualizar a fallido si hubo un error de red o de provider
+      DomainConfigService.updateScrapeStatus(domain, 'failed', error.message).catch(err => 
+        console.error(`[ScraperService] Error updating status for ${domain}:`, err)
+      );
+
       if (saveLog) {
         await ProcessRepository.create({
           url,
