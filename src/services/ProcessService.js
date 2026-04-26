@@ -181,7 +181,9 @@ class ProcessService {
    * Obtener estadísticas generales
    */
   static async getStats() {
-    const logs = await ProcessRepository.getRecent(1000);
+    // Obtenemos una muestra más grande para las estadísticas diarias
+    // En un sistema real, esto debería ser una agregación pre-calculada o una query por fecha
+    const logs = await ProcessRepository.getRecent(2000);
     
     const stats = {
       total: logs.length,
@@ -222,13 +224,20 @@ class ProcessService {
     logs.forEach(log => {
       const domain = log.domainId || 'unknown';
       if (!stats.byDomain[domain]) {
-        stats.byDomain[domain] = { total: 0, successful: 0, failed: 0 };
+        stats.byDomain[domain] = { total: 0, successful: 0, failed: 0, failureRate: 0 };
       }
       stats.byDomain[domain].total++;
       if (log.success) {
         stats.byDomain[domain].successful++;
       } else {
         stats.byDomain[domain].failed++;
+      }
+      
+      // Calcular tasa de fallo porcentual
+      if (stats.byDomain[domain].total > 0) {
+        stats.byDomain[domain].failureRate = Math.round(
+          (stats.byDomain[domain].failed / stats.byDomain[domain].total) * 100
+        );
       }
     });
 
