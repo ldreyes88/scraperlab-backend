@@ -1,5 +1,6 @@
 const ScraperAPIStrategy = require('./ScraperAPIStrategy');
 const OxylabsStrategy = require('./OxylabsStrategy');
+const DirectAPIStrategy = require('./DirectAPIStrategy');
 
 // Estrategias de dominio
 const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
@@ -11,7 +12,9 @@ const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
 class StrategyFactory {
   static providerStrategies = {
     'scraperapi': ScraperAPIStrategy,
-    'oxylabs': OxylabsStrategy
+    'oxylabs': OxylabsStrategy,
+    'api': DirectAPIStrategy,
+    'direct': DirectAPIStrategy
   };
 
   /**

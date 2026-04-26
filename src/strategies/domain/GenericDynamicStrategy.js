@@ -27,14 +27,28 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
         scriptPatterns: domainConfig.scriptPatterns || []
       };
 
-      // Obtener HTML
-      const html = await this.fetchHtml(url, options);
-      const $ = cheerio.load(html);
-
+      // Obtener contenido (HTML o JSON)
+      const content = await this.fetchHtml(url, options);
+      
       // 2. Obtener configuración de extracción según el tipo (detail/searchSpecific/search)
-      // Nota: Soportamos tanto 'scraperConfig' (nuevo) como 'selectors' (legacy)
       const fullConfig = domainConfig.scraperConfig || domainConfig.selectors || {};
       const selectors = fullConfig[scrapeType] || {};
+
+      // Si el contenido ya es un objeto (API), usamos extracción directa por JSON Path
+      if (content && typeof content === 'object') {
+        method += '+JSON-Direct';
+        const extractedData = this.extractFromJson(content, selectors.jsonPath || {});
+        
+        return this.formatResponse({
+          success: true,
+          marketplace: domainConfig.domainId,
+          method,
+          url,
+          details: { ...extractedData, countryCode: domainConfig.countryCode }
+        });
+      }
+
+      const $ = cheerio.load(content);
 
       if (scrapeType === 'search') {
         return this.handleSearchExtraction($, selectors, url, domainConfig.domainId);

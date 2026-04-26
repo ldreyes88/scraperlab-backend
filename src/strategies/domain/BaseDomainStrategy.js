@@ -65,6 +65,21 @@ class BaseDomainStrategy {
   }
 
   /**
+   * Extrae datos directamente de un objeto JSON usando mapeo de rutas
+   * @param {Object} json 
+   * @param {Object} mapping { campo: "ruta.del.campo" }
+   */
+  extractFromJson(json, mapping = {}) {
+    const data = {};
+    for (const [key, path] of Object.entries(mapping)) {
+      if (path) {
+        data[key] = this.getValueByPath(json, path);
+      }
+    }
+    return data;
+  }
+
+  /**
    * Detecta si el HTML recibido indica un bloqueo o captcha
    */
   isBlocked(html) {
