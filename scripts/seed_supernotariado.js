@@ -3,10 +3,14 @@ const { dynamoDB, TABLES } = require('../src/config/database');
 const { PutItemCommand } = require('@aws-sdk/client-dynamodb');
 const { marshall } = require('@aws-sdk/util-dynamodb');
 
-// Token de tu bot de Telegram
-const TELEGRAM_TOKEN = '8758494921:AAGvNFKKBmSin87l2zcQCx0d46sN-UIHK-4';
-// Tu Chat ID (Luis Reyes)
-const YOUR_CHAT_ID = '5376840240'; 
+// Token y Chat ID cargados desde el archivo .env por seguridad
+const TELEGRAM_TOKEN = process.env.TELEGRAM_NOTICE_TOKEN;
+const YOUR_CHAT_ID = process.env.TELEGRAM_NOTICE_CHAT_ID; 
+
+if (!TELEGRAM_TOKEN || !YOUR_CHAT_ID) {
+  console.error('❌ Error: TELEGRAM_NOTICE_TOKEN o TELEGRAM_NOTICE_CHAT_ID no configurados en el .env');
+  process.exit(1);
+}
 
 async function seed() {
   try {
