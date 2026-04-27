@@ -76,7 +76,15 @@ class DirectAPIStrategy extends BaseStrategy {
       }
     }
 
-    return this.formatResponse(data);
+    const result = this.formatResponse(data);
+    
+    return {
+      success: true,
+      details: {
+        ...result,
+        ...data.extra
+      }
+    };
   }
 
   /**
