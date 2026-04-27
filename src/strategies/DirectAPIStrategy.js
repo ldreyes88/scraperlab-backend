@@ -49,9 +49,34 @@ class DirectAPIStrategy extends BaseStrategy {
       return this.parseHtml(responseData, selectors, url);
     }
 
-    // Si es un objeto (JSON) y hay selectores, retornamos la respuesta tal cual
-    // (En el futuro se podría implementar un JSON extractor aquí si fuera necesario)
+    // Si es un objeto (JSON) y hay mapeos definidos
+    if (typeof responseData === 'object' && responseData !== null) {
+      return this.parseJson(responseData, domainConfig.scraperConfig?.detail?.jsonPath || selectors, url);
+    }
+
     return responseData;
+  }
+
+  /**
+   * Parsea un objeto JSON usando mapeos de llaves
+   */
+  parseJson(json, mapping, url) {
+    const data = { url, extra: {} };
+    
+    if (mapping) {
+      // Extraer campos estándar
+      data.title = json[mapping.title] || '';
+      data.price = json[mapping.currentPrice] || 0;
+      
+      // Extraer campos extra (como ciudad, fechas, etc)
+      for (const [key, jsonKey] of Object.entries(mapping)) {
+        if (!['title', 'currentPrice'].includes(key)) {
+          data.extra[key] = json[jsonKey] || null;
+        }
+      }
+    }
+
+    return this.formatResponse(data);
   }
 
   /**
