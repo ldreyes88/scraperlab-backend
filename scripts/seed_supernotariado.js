@@ -16,10 +16,32 @@ async function seed() {
   try {
     console.log('🚀 Iniciando configuración de Supernotariado en ScraperLab...');
 
-    // 1. Configurar el Dominio en DynamoDB
+    // 1. Configurar el Provider "api" (Direct API Strategy)
+    const provider = {
+      providerId: 'api',
+      name: 'Direct API Strategy',
+      description: 'Proveedor de costo $0 que realiza peticiones directas vía Axios (ideal para APIs abiertas)',
+      type: 'API',
+      enabled: true,
+      baseUrl: '',
+      authType: 'none',
+      pricing: {
+        costPerRequest: 0,
+        currency: 'USD'
+      },
+      configSchema: {
+        timeout: {
+          type: 'number',
+          label: 'Timeout (ms)',
+          default: 30000
+        }
+      }
+    };
+
+    // 2. Configurar el Dominio en DynamoDB
     const domain = {
       domainId: 'estadotramiteciud.supernotariado.gov.co',
-      providerId: 'api', // Usamos el nuevo provider gratuito
+      providerId: 'api', // Vinculado al nuevo provider
       enabled: true,
       countryCode: 'CO',
       strategyOrder: ['css'], 
@@ -83,6 +105,12 @@ async function seed() {
     };
 
     // Ejecutar inserts
+    await dynamoDB.send(new PutItemCommand({
+      TableName: TABLES.PROVIDERS,
+      Item: marshall(provider)
+    }));
+    console.log('✅ Provider "api" registrado.');
+
     await dynamoDB.send(new PutItemCommand({
       TableName: TABLES.DOMAINS,
       Item: marshall(domain)

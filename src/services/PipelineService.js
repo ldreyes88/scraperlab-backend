@@ -278,9 +278,11 @@ class PipelineService {
     const { urlTemplate, saveLog = true } = node.config;
     const url = this.resolveTemplate(urlTemplate, state);
     
-    console.log(`Ejecutando SCRAPE_DETAIL para: ${url}`);
+    console.log(`[PipelineService] Ejecutando SCRAPE_DETAIL para: ${url}`);
     const result = await ScraperService.scrapeUrl(url, saveLog, 'detail');
-    return result.data;
+    
+    // Retornar el objeto completo para que el motor de pipeline vea result.success
+    return result;
   }
 
   /**
