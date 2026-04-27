@@ -51,7 +51,9 @@ class DirectAPIStrategy extends BaseStrategy {
 
     // Si es un objeto (JSON) y hay mapeos definidos
     if (typeof responseData === 'object' && responseData !== null) {
-      return this.parseJson(responseData, domainConfig.scraperConfig?.detail?.jsonPath || selectors, url);
+      // Intentar obtener mapeo desde scraperConfig (DB) o desde selectors (Legacy)
+      const mapping = domainConfig.scraperConfig?.[domainConfig.scrapeType || 'detail']?.jsonPath || selectors;
+      return this.parseJson(responseData, mapping, url);
     }
 
     return responseData;
