@@ -1,5 +1,6 @@
 const BaseStrategy = require('./BaseStrategy');
 const cheerio = require('cheerio');
+const https = require('https');
 
 /**
  * DirectAPIStrategy - Estrategia para realizar peticiones HTTP directas (sin proxy).
@@ -26,7 +27,10 @@ class DirectAPIStrategy extends BaseStrategy {
       headers: providerConfig.headers || {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
       },
-      timeout: parseInt(process.env.HTTP_TIMEOUT) || 30000
+      timeout: parseInt(process.env.HTTP_TIMEOUT) || 30000,
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: false
+      })
     };
 
     console.log(`[DirectAPI] Consultando URL: ${url}`);

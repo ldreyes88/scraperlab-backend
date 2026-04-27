@@ -24,7 +24,8 @@ class BaseStrategy {
         params: config.params || {},
         data: config.data || null,
         timeout: config.timeout || parseInt(process.env.HTTP_TIMEOUT) || 150000,
-        auth: config.auth || null
+        auth: config.auth || null,
+        httpsAgent: config.httpsAgent || null
       });
 
       return response.data;

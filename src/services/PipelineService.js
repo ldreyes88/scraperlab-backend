@@ -79,8 +79,8 @@ class PipelineService {
         
         // Detección inteligente de éxito para arrays (como SCRAPE_SEARCH) o objetos simples
         const isSuccess = Array.isArray(nodeResult) 
-          ? nodeResult.some(r => r.success !== false) // Al menos uno exitoso en la lista
-          : nodeResult?.success !== false;
+          ? nodeResult.some(r => r.success !== false && r.data?.success !== false) 
+          : nodeResult?.success !== false && nodeResult?.data?.success !== false;
 
         state.results.push({
           nodeId: node.id,
