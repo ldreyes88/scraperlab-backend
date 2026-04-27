@@ -397,8 +397,24 @@ class PipelineService {
 
   /**
    * Utilidad para resolver variables tipo {{input.productName}} o {{nodes.start.id}}
+   * Soporta strings, objetos y arrays de forma recursiva.
    */
   resolveTemplate(template, state) {
+    if (!template) return template;
+
+    // Si es un objeto o array, procesar recursivamente
+    if (typeof template === 'object') {
+      if (Array.isArray(template)) {
+        return template.map(item => this.resolveTemplate(item, state));
+      }
+      
+      const resolvedObj = {};
+      for (const [key, value] of Object.entries(template)) {
+        resolvedObj[key] = this.resolveTemplate(value, state);
+      }
+      return resolvedObj;
+    }
+
     if (typeof template !== 'string') return template;
     
     // Si el template es exactamente un tag {{variable}}, devolvemos el valor crudo (obj, array, etc)
