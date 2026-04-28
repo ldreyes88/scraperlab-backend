@@ -31,8 +31,13 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       const content = await this.fetchHtml(url, options);
       
       // 2. Obtener configuración de extracción según el tipo (detail/searchSpecific/search)
+      // Nota: DomainConfigService ya resuelve scraperConfig por tipo (aplana detail/search),
+      // así que fullConfig ya contiene directamente { jsonPath, css, ... } sin el wrapper de tipo.
+      // Fallback a fullConfig[scrapeType] para compatibilidad con configs crudas (ej: tests, seeds).
       const fullConfig = domainConfig.scraperConfig || domainConfig.selectors || {};
-      const selectors = fullConfig[scrapeType] || {};
+      const selectors = fullConfig.jsonPath || fullConfig.css || fullConfig.containerSelector
+        ? fullConfig
+        : (fullConfig[scrapeType] || {});
 
       // Si el contenido ya es un objeto (API), usamos extracción directa por JSON Path
       if (content && typeof content === 'object') {
