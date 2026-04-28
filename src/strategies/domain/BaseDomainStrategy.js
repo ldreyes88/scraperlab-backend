@@ -553,6 +553,7 @@ extractFromScripts($, patterns = []) {
         currency: details.currency || currencyConfig.currency || 'COP'
       },
       details: {
+        ...details,
         title: details.title || '',
         url: details.url || url,
         image: details.image || ''

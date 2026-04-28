@@ -36,7 +36,18 @@ class DirectAPIStrategy extends BaseStrategy {
     console.log(`[DirectAPI] Consultando URL: ${url}`);
 
     // Realizar la petición directa
-    const responseData = await this.makeRequest(url, config);
+    let responseData = await this.makeRequest(url, config);
+
+    // Si la respuesta es un string pero parece JSON (ej: Supernotariado retorna text/html siendo JSON),
+    // intentar parsearlo para que GenericDynamicStrategy lo maneje como objeto.
+    if (typeof responseData === 'string' && (responseData.trim().startsWith('{') || responseData.trim().startsWith('['))) {
+      try {
+        responseData = JSON.parse(responseData);
+        console.log(`[DirectAPI] JSON detectado y parseado exitosamente.`);
+      } catch (e) {
+        // No era un JSON válido, se mantiene como string para parseo HTML
+      }
+    }
 
     // Si no hay selectores definidos, retornar el contenido crudo (HTML o JSON)
     // Esto permite que GenericDynamicStrategy o estrategias específicas manejen el parseo

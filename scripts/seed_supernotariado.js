@@ -51,9 +51,9 @@ async function seed() {
           jsonPath: {
             title: 'entidad',
             currentPrice: 'estadoTramiteFecha', // Usamos la fecha como valor de control
-            status_date: 'estadoTramiteFecha',
+            statusdate: 'estadoTramiteFecha',
             radicado_date: 'estadoRadicadoFecha',
-            available_date: 'estadoDisponibleFecha',
+            availabledate: 'estadoDisponibleFecha',
             ciudad: 'ciudad'
           }
         }
@@ -93,8 +93,8 @@ async function seed() {
                     "📍 *Turno:* {{input.turno}}\n" +
                     "🏢 *Entidad:* {{nodes.scrape-api.data.details.title}}\n" +
                     "🌆 *Ciudad:* {{nodes.scrape-api.data.details.ciudad}}\n\n" +
-                    "📅 *Estado Trámite:* {{nodes.scrape-api.data.details.status_date}}\n" +
-                    "📦 *Disponible Entrega:* {{nodes.scrape-api.data.details.available_date}}\n\n" +
+                    "📅 *Estado Trámite:* {{nodes.scrape-api.data.details.statusdate}}\n" +
+                    "📦 *Disponible Entrega:* {{nodes.scrape-api.data.details.availabledate}}\n\n" +
                     "🔗 [Ver en el Portal](https://estadotramiteciud.supernotariado.gov.co/Portal/EstadoTramiteCiud/)",
               parse_mode: "Markdown"
             }
