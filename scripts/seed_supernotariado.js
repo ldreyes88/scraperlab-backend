@@ -65,6 +65,20 @@ async function seed() {
       pipelineId: 'monitor-supernotariado',
       name: 'Monitoreo de Trámite Ciudadano',
       enabled: true,
+      schedules: [
+        {
+          input: { turno: '2026-140-6-4630' },
+          intervalHours: 5,
+          lastRun: null,
+          enabled: true
+        },
+        {
+          input: { turno: '2026-140-6-4847' },
+          intervalHours: 5,
+          lastRun: null,
+          enabled: true
+        }
+      ],
       nodes: [
         {
           id: 'start',

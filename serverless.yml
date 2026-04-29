@@ -90,8 +90,7 @@ provider:
 functions:
   api:
     handler: lambda.handler
-    # timeout heredado de provider (180s)
-    url: true  # Function URL pública sin auth (bypass API Gateway 29s limit)
+    url: true
     events:
       - http:
           path: /{proxy+}
@@ -113,6 +112,12 @@ functions:
               - X-Api-Key
               - Authorization
             allowCredentials: false
+  
+  scheduler:
+    handler: src/handlers/scheduler.handler
+    timeout: 300
+    events:
+      - schedule: rate(1 hour)
 
 resources:
   Resources:
