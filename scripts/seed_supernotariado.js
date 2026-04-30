@@ -68,13 +68,13 @@ async function seed() {
       schedules: [
         {
           input: { turno: '2026-140-6-4630' },
-          intervalHours: 5,
+          intervalHours: 12,
           lastRun: null,
           enabled: true
         },
         {
           input: { turno: '2026-140-6-4847' },
-          intervalHours: 5,
+          intervalHours: 12,
           lastRun: null,
           enabled: true
         }

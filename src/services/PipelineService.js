@@ -14,7 +14,7 @@ class PipelineService {
    * @param {Object} options - { isSync: boolean }
    */
   async start(pipelineId, inputData = {}, options = {}) {
-    const { isSync = false } = options;
+    const { isSync = false, trigger = 'manual' } = options;
 
     // Crear el registro de proceso
     const processRecord = await ProcessRepository.create({
@@ -22,6 +22,7 @@ class PipelineService {
       pipelineId: pipelineId,
       status: 'pending',
       input: inputData,
+      trigger: trigger,
       steps: []
     });
 
