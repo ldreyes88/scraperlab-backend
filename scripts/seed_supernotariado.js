@@ -90,8 +90,17 @@ async function seed() {
           id: 'scrape-api',
           type: 'SCRAPE_DETAIL',
           config: { 
-            // Construye la URL dinámicamente con el turno del input
             urlTemplate: 'https://estadotramiteciud.supernotariado.gov.co/Portal/EstadoTramiteCiud/webresources/tramite/140,{{input.turno}}'
+          },
+          next: 'filter-changes'
+        },
+        {
+          id: 'filter-changes',
+          type: 'CONDITION',
+          config: {
+            compare: '{{nodes.scrape-api.data.details.statusdate}}',
+            onNoChange: 'STOP',
+            onDifference: 'CONTINUE'
           },
           next: 'notify-telegram'
         },

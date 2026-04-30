@@ -390,6 +390,41 @@ class ProcessRepository {
     }
   }
 
+  static async findLastByPipeline(pipelineId, input, limit = 5) {
+    try {
+      // Usar Scan con filtros para encontrar ejecuciones anteriores del mismo pipeline
+      // Nota: En producción con muchos datos, esto debería usar un GSI por pipelineId
+      const params = {
+        TableName: TABLES.PROCESS,
+        FilterExpression: 'pipelineId = :pipelineId AND #status = :status',
+        ExpressionAttributeNames: {
+          '#status': 'status'
+        },
+        ExpressionAttributeValues: {
+          ':pipelineId': pipelineId,
+          ':status': 'completed'
+        }
+      };
+
+      const result = await dynamoDB.send(new ScanCommand(params));
+      let items = result.Items || [];
+
+      // Filtrar por input exacto en memoria para mayor precisión
+      if (input) {
+        const inputStr = JSON.stringify(input);
+        items = items.filter(item => JSON.stringify(item.input) === inputStr);
+      }
+
+      // Ordenar por timestamp descendente
+      items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      return items[0] || null;
+    } catch (error) {
+      console.error('Error finding last process by pipeline:', error);
+      return null;
+    }
+  }
+
   static async delete(logId) {
     try {
       await dynamoDB.send(

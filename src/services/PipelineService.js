@@ -119,7 +119,12 @@ class PipelineService {
         }
 
         // Determinar siguiente nodo
-        currentNodeId = node.next;
+        if (nodeResult && nodeResult.action === 'STOP') {
+          console.log(`[Pipeline] Deteniendo ejecución por solicitud del nodo ${node.id}: ${nodeResult.message || 'Sin detalles'}`);
+          currentNodeId = null;
+        } else {
+          currentNodeId = node.next;
+        }
       } catch (error) {
         const duration = Date.now() - startTime;
         console.error(`[Pipeline Error] pipeline: ${pipelineId} | process: ${processId} | node: ${node.id} (${node.type}) - Details:`, error.message);
@@ -195,6 +200,9 @@ class PipelineService {
         break;
       case 'API_REQUEST':
         output = await this.handleApiRequest(node, state);
+        break;
+      case 'CONDITION':
+        output = await this.handleCondition(node, state, pipeline);
         break;
       default:
         throw new Error(`Tipo de nodo no soportado: ${node.type}`);
@@ -466,6 +474,43 @@ class PipelineService {
       
       return typeof current === 'object' ? JSON.stringify(current) : current;
     });
+  }
+  /**
+   * Manejador de CONDITION
+   */
+  async handleCondition(node, state, pipeline) {
+    const { compare, onNoChange = 'STOP', onDifference = 'CONTINUE' } = node.config;
+    
+    // 1. Obtener valor actual
+    const currentValue = this.resolveTemplate(compare, state);
+    console.log(`[ConditionNode] Valor actual para ${node.id}:`, currentValue);
+
+    // 2. Buscar ejecución anterior exitosa de este mismo pipeline con el mismo input
+    const lastProcess = await ProcessRepository.findLastByPipeline(pipeline.pipelineId, state.input);
+    
+    let hasChanged = true; // Por defecto asumimos cambio si no hay historial
+    
+    if (lastProcess && lastProcess.steps) {
+      // Intentar encontrar el mismo nodo en la ejecución anterior para comparar
+      const lastNodeResult = lastProcess.steps.find(s => s.nodeId === node.id);
+      const lastValue = lastNodeResult?.output?.value;
+      
+      console.log(`[ConditionNode] Valor anterior para ${node.id}:`, lastValue);
+      
+      if (lastValue !== undefined && lastValue === currentValue) {
+        hasChanged = false;
+      }
+    }
+
+    const action = hasChanged ? onDifference : onNoChange;
+    console.log(`[ConditionNode] Resultado: ${hasChanged ? 'CAMBIO' : 'SIN CAMBIO'} -> Acción: ${action}`);
+
+    return { 
+      success: true, 
+      value: currentValue, 
+      action: action,
+      message: action === 'STOP' ? 'Condición cumplida para detener' : 'Condición cumplida para continuar'
+    };
   }
 }
 
