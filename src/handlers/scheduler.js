@@ -37,7 +37,7 @@ module.exports.handler = async (event) => {
         if (shouldRun) {
           console.log(`[SchedulerHandler] Ejecutando pipeline ${pipeline.pipelineId} para el turno ${input.turno || 'unknown'}`);
           try {
-            await PipelineService.start(pipeline.pipelineId, input);
+            await PipelineService.start(pipeline.pipelineId, input, { isSync: true });
             updatedSchedules[i] = { ...schedule, lastRun: now.toISOString() };
             updated = true;
           } catch (error) {

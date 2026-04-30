@@ -36,4 +36,29 @@ Se creó e implementó un nuevo proveedor (`providerId: 'api'`) diseñado para h
 ## 4. Estado Actual
 *   El pipeline puede llegar al portal, saltar la restricción SSL, y obtener los datos en crudo (JSON).
 *   Telegram está conectado exitosamente (tras iniciar el chat con el bot) y recibe peticiones.
-*   **Falta/Pendiente:** Si bien el sistema ya recibe el JSON del Supernotariado, las etiquetas en Telegram no se están traduciendo correctamente debido a desajustes finales entre los nombres de las llaves del JSON crudo y el `jsonPath` que configuramos. Con la consola de ejecución en el frontend y el log de `output`, es cuestión de ajustar las llaves de acceso para que cuadren.  
+*   **Falta/Pendiente:** Si bien el sistema ya recibe el JSON del Supernotariado, las etiquetas en Telegram no se están traduciendo correctamente debido a desajustes finales entre los nombres de las llaves del JSON crudo y el `jsonPath` que configuramos. Con la consola de ejecución en el frontend y el log de `output`, es cuestión de ajustar las llaves de acceso para que cuadren.
+
+## 5. Próximos Pasos (TODO)
+
+### Implementación de Nodos de Condición
+Para optimizar el monitoreo y evitar notificaciones repetidas, se propone la implementación de un nodo tipo `CONDITION` que permita filtrar ejecuciones sin cambios.
+
+**¿Cómo se vería en el Pipeline?**
+Podríamos añadir un nodo intermedio llamado `filter-changes`:
+
+```json
+{
+  "id": "filter-changes",
+  "type": "CONDITION", // Nuevo tipo de nodo
+  "config": {
+    "compare": "nodes.scrape-api.data.details.statusdate",
+    "onNoChange": "STOP", // Si es igual, se detiene el pipeline
+    "onDifference": "CONTINUE" // Si es distinto, sigue a Telegram
+  }
+}
+```
+
+**Requerimientos técnicos:**
+*   Crear el tipo de nodo `CONDITION` en el `PipelineService`.
+*   Asegurarnos de que el input (el turno) se guarde bien en los logs para poder buscar "el último de este turno".
+*   *Opcional:* Implementar una versión simplificada que guarde el "hash" del último resultado en la configuración del pipeline para comparaciones rápidas.

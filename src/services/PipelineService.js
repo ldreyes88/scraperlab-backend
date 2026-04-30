@@ -8,9 +8,14 @@ const { nowColombiaISO } = require('../utils/time');
 
 class PipelineService {
   /**
-   * Iniciar la ejecución de un pipeline de forma asíncrona
+   * Iniciar la ejecución de un pipeline
+   * @param {string} pipelineId
+   * @param {Object} inputData
+   * @param {Object} options - { isSync: boolean }
    */
-  async start(pipelineId, inputData = {}) {
+  async start(pipelineId, inputData = {}, options = {}) {
+    const { isSync = false } = options;
+
     // Crear el registro de proceso
     const processRecord = await ProcessRepository.create({
       processType: 'pipeline',
@@ -22,11 +27,18 @@ class PipelineService {
 
     const processId = processRecord.processId;
 
-    // Disparar ejecución en background
-    this.execute(pipelineId, inputData, processId).catch(err => {
-      console.error(`[PipelineService] Error crítico:`, err);
-      ProcessRepository.updateStatus(processId, 'failed');
-    });
+    // Ejecución
+    const execution = this.execute(pipelineId, inputData, processId);
+
+    if (isSync) {
+      await execution;
+    } else {
+      // Disparar ejecución en background (para API)
+      execution.catch(err => {
+        console.error(`[PipelineService] Error crítico:`, err);
+        ProcessRepository.updateStatus(processId, 'failed');
+      });
+    }
 
     return processId;
   }
