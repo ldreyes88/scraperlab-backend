@@ -105,7 +105,7 @@ class ProcessDetailRepository {
   /**
    * Obtener detalles con paginación
    */
-  static async getPaginated(processId, lastKey = null, limit = 20) {
+  static async getPaginated(processId, lastKey = null, limit = 20, filters = {}) {
     try {
       const params = {
         TableName: TABLES.PROCESS_DETAIL,
@@ -117,6 +117,12 @@ class ProcessDetailRepository {
         ScanIndexForward: false,
         Limit: limit
       };
+
+      if (filters.success !== undefined) {
+        params.FilterExpression = '#success = :success';
+        params.ExpressionAttributeNames = { '#success': 'success' };
+        params.ExpressionAttributeValues[':success'] = filters.success;
+      }
 
       if (lastKey) {
         params.ExclusiveStartKey = lastKey;

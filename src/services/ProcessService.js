@@ -140,7 +140,7 @@ class ProcessService {
   /**
    * Obtener detalles de un batch
    */
-  static async getBatchDetails(processId, page = 1, pageSize = 20) {
+  static async getBatchDetails(processId, page = 1, pageSize = 20, filters = {}) {
     try {
       // Calcular lastKey para paginación
       let lastKey = null;
@@ -157,7 +157,7 @@ class ProcessService {
         }
       }
 
-      const result = await ProcessDetailRepository.getPaginated(processId, lastKey, pageSize);
+      const result = await ProcessDetailRepository.getPaginated(processId, lastKey, pageSize, filters);
 
       return {
         items: result.items,

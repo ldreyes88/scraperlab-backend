@@ -129,6 +129,7 @@ exports.getBatchDetails = async (req, res, next) => {
     const { processId } = req.params;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
+    const status = req.query.status;
 
     if (!processId) {
       return res.status(400).json({
@@ -137,7 +138,11 @@ exports.getBatchDetails = async (req, res, next) => {
       });
     }
 
-    const result = await ProcessService.getBatchDetails(processId, page, limit);
+    const filters = {};
+    if (status === 'success') filters.success = true;
+    if (status === 'error') filters.success = false;
+
+    const result = await ProcessService.getBatchDetails(processId, page, limit, filters);
 
     res.json({
       success: true,
