@@ -162,10 +162,10 @@ app.use((req, res) => {
 });
 
 if (require.main === module) {
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-      console.log(`🚀 Servidor local de ScraperLab corriendo en http://localhost:${port}`);
-    });
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`🚀 Servidor local de ScraperLab corriendo en http://localhost:${port}`);
+});
   }
 
 module.exports = app;
