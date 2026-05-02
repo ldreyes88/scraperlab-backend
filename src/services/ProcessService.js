@@ -1,5 +1,6 @@
 const ProcessRepository = require('../repositories/ProcessRepository');
 const ProcessDetailRepository = require('../repositories/ProcessDetailRepository');
+const DomainConfigService = require('./DomainConfigService');
 const ScraperService = require('./ScraperService');
 const { v4: uuidv4 } = require('uuid');
 
@@ -85,12 +86,22 @@ class ProcessService {
           details.push(detail);
           successCount++;
         } catch (error) {
+          // Categorizar error del batch
+          let errorType = 'scraping_error';
+          const msg = error.message.toLowerCase();
+          if (msg.includes('status code') || msg.includes('api')) {
+            errorType = 'api_error';
+          } else if (msg.includes('extraction') || msg.includes('title not found')) {
+            errorType = 'extraction_error';
+          }
+
           const detail = {
             processId,
             url,
             scrapeType: type,
             success: false,
-            error: error.message
+            error: error.message,
+            errorType
           };
 
           details.push(detail);
@@ -182,16 +193,27 @@ class ProcessService {
    */
   static async getStats() {
     // Obtenemos una muestra más grande para las estadísticas diarias
-    // En un sistema real, esto debería ser una agregación pre-calculada o una query por fecha
     const logs = await ProcessRepository.getRecent(2000);
+    const allDomains = await DomainConfigService.getAllConfigs();
     
     const stats = {
       total: logs.length,
       successful: logs.filter(l => l.success).length,
       failed: logs.filter(l => !l.success).length,
       avgResponseTime: 0,
+      errorTypes: {
+        api_error: logs.filter(l => l.errorType === 'api_error').length,
+        scraping_error: logs.filter(l => l.errorType === 'scraping_error').length,
+        extraction_error: logs.filter(l => l.errorType === 'extraction_error').length,
+        unknown: logs.filter(l => !l.success && !l.errorType).length
+      },
       byProvider: {},
       byDomain: {},
+      domainHealth: {
+        total: allDomains.length,
+        active: allDomains.filter(d => d.status_service === 'active').length,
+        failed: allDomains.filter(d => d.status_service === 'failed').length
+      },
       recentErrors: []
     };
 
@@ -220,23 +242,31 @@ class ProcessService {
       }
     });
 
-    // Agrupar por dominio
+    // Agrupar por dominio e integrar salud actual
     logs.forEach(log => {
-      const domain = log.domainId || 'unknown';
-      if (!stats.byDomain[domain]) {
-        stats.byDomain[domain] = { total: 0, successful: 0, failed: 0, failureRate: 0 };
+      const domainId = log.domainId || 'unknown';
+      if (!stats.byDomain[domainId]) {
+        const domainConfig = allDomains.find(d => d.domainId === domainId);
+        stats.byDomain[domainId] = { 
+          total: 0, 
+          successful: 0, 
+          failed: 0, 
+          failureRate: 0,
+          currentStatus: domainConfig?.status_service || 'unknown',
+          lastError: domainConfig?.last_scrape_error || null
+        };
       }
-      stats.byDomain[domain].total++;
+      stats.byDomain[domainId].total++;
       if (log.success) {
-        stats.byDomain[domain].successful++;
+        stats.byDomain[domainId].successful++;
       } else {
-        stats.byDomain[domain].failed++;
+        stats.byDomain[domainId].failed++;
       }
       
       // Calcular tasa de fallo porcentual
-      if (stats.byDomain[domain].total > 0) {
-        stats.byDomain[domain].failureRate = Math.round(
-          (stats.byDomain[domain].failed / stats.byDomain[domain].total) * 100
+      if (stats.byDomain[domainId].total > 0) {
+        stats.byDomain[domainId].failureRate = Math.round(
+          (stats.byDomain[domainId].failed / stats.byDomain[domainId].total) * 100
         );
       }
     });
@@ -249,11 +279,60 @@ class ProcessService {
         logId: l.logId,
         url: l.url,
         error: l.error,
+        errorType: l.errorType,
         timestamp: l.timestamp,
         provider: l.scraperProvider
       }));
 
     return stats;
+  }
+
+  /**
+   * Genera un reporte detallado de salud combinando dominios y procesos
+   */
+  static async getHealthReport() {
+    const allDomains = await DomainConfigService.getAllConfigs();
+    const recentLogs = await ProcessRepository.getRecent(500);
+    
+    const report = {
+      summary: {
+        totalDomains: allDomains.length,
+        healthyDomains: allDomains.filter(d => d.status_service === 'active').length,
+        failedDomains: allDomains.filter(d => d.status_service === 'failed').length,
+        globalSuccessRate: 0
+      },
+      domains: allDomains.map(domain => {
+        const domainLogs = recentLogs.filter(l => l.domainId === domain.domainId);
+        const failedLogs = domainLogs.filter(l => !l.success);
+        
+        return {
+          domainId: domain.domainId,
+          status: domain.status_service || 'active',
+          lastError: domain.last_scrape_error,
+          lastErrorType: domain.last_error_type,
+          enabled: domain.enabled,
+          stats: {
+            totalRecent: domainLogs.length,
+            failedRecent: failedLogs.length,
+            successRate: domainLogs.length > 0 
+              ? Math.round(((domainLogs.length - failedLogs.length) / domainLogs.length) * 100) 
+              : 100
+          },
+          errorsByCategory: {
+            api: failedLogs.filter(l => l.errorType === 'api_error').length,
+            scraping: failedLogs.filter(l => l.errorType === 'scraping_error').length,
+            extraction: failedLogs.filter(l => l.errorType === 'extraction_error').length
+          }
+        };
+      })
+    };
+
+    if (recentLogs.length > 0) {
+      const globalSuccess = recentLogs.filter(l => l.success).length;
+      report.summary.globalSuccessRate = Math.round((globalSuccess / recentLogs.length) * 100);
+    }
+
+    return report;
   }
 
   /**

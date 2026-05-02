@@ -83,6 +83,19 @@ exports.getStats = async (req, res, next) => {
   }
 };
 
+exports.getHealthReport = async (req, res, next) => {
+  try {
+    const report = await ProcessService.getHealthReport();
+    
+    res.json({
+      success: true,
+      data: report
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getDomainStats = async (req, res, next) => {
   try {
     const { domainId } = req.params;

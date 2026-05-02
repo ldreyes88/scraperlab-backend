@@ -287,8 +287,8 @@ class DomainConfigService {
   /**
    * Actualizar el estado de salud del scraping para un dominio
    */
-  static async updateScrapeStatus(domainId, status, error = null) {
-    return await DomainRepository.updateScrapeStatus(domainId, status, error);
+  static async updateScrapeStatus(domainId, status, error = null, errorType = null) {
+    return await DomainRepository.updateScrapeStatus(domainId, status, error, errorType);
   }
 }
 

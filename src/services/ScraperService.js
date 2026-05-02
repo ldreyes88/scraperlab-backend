@@ -37,22 +37,24 @@ class ScraperService {
       const responseTime = Date.now() - startTime;
 
       // 3b. Determinar el estado de salud del servicio (status_service) INTELLIGENT CLEANING
-      // Marcamos como fallido si la estrategia retorna success: false O si es un detail y no extrajo título
       let finalStatus = 'active';
       let scrapeError = null;
+      let errorType = null;
 
       if (!result.success) {
         finalStatus = 'failed';
         scrapeError = result.error || 'Unknown extraction error';
+        // Si hay un error retornado por la estrategia, usualmente es de extracción o API interna de la estrategia
+        errorType = scrapeError.toLowerCase().includes('api') ? 'api_error' : 'extraction_error';
       } else if (scrapeType === 'detail' && (!result.details?.title || result.details?.title === '')) {
-        // Si es una página de detalle y no pudimos extraer el título, es un fallo de scraping
-        // aunque el provider haya respondido 200 OK.
+        // Si es una página de detalle y no pudimos extraer el título, es un fallo de extracción
         finalStatus = 'failed';
         scrapeError = 'Extraction failed: Title not found (Possible selector issue or blocked content)';
+        errorType = 'extraction_error';
       }
 
       // Actualizar el estado del dominio en segundo plano
-      DomainConfigService.updateScrapeStatus(domain, finalStatus, scrapeError).catch(err => 
+      DomainConfigService.updateScrapeStatus(domain, finalStatus, scrapeError, errorType).catch(err => 
         console.error(`[ScraperService] Error updating status for ${domain}:`, err)
       );
 
@@ -88,8 +90,17 @@ class ScraperService {
     } catch (error) {
       const responseTime = Date.now() - startTime;
       
+      // Categorizar el error capturado
+      let errorType = 'scraping_error';
+      const msg = error.message.toLowerCase();
+      if (msg.includes('status code') || msg.includes('api') || msg.includes('authenticated')) {
+        errorType = 'api_error';
+      } else if (msg.includes('timeout') || msg.includes('network') || msg.includes('econnrefused')) {
+        errorType = 'scraping_error';
+      }
+
       // Actualizar a fallido si hubo un error de red o de provider
-      DomainConfigService.updateScrapeStatus(domain, 'failed', error.message).catch(err => 
+      DomainConfigService.updateScrapeStatus(domain, 'failed', error.message, errorType).catch(err => 
         console.error(`[ScraperService] Error updating status for ${domain}:`, err)
       );
 
@@ -104,6 +115,7 @@ class ScraperService {
           success: false,
           responseTime,
           error: error.message,
+          errorType, // Guardar tipo de error en el log
           timestamp: nowColombiaISO()
         });
       }

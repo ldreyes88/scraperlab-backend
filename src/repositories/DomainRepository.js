@@ -100,6 +100,7 @@ class DomainRepository {
         
         status_service: configData.status_service || existing?.status_service || 'active',
         last_scrape_error: configData.last_scrape_error || existing?.last_scrape_error || null,
+        last_error_type: configData.last_error_type || existing?.last_error_type || null,
         
         createdAt: existing?.createdAt || nowColombiaISO(),
         updatedAt: nowColombiaISO()
@@ -140,17 +141,21 @@ class DomainRepository {
    * @param {string} status - 'active' | 'failed'
    * @param {string} error - Mensaje de error (opcional)
    */
-  static async updateScrapeStatus(domainId, status, error = null) {
+  static async updateScrapeStatus(domainId, status, error = null, errorType = null) {
     try {
+      const updateExpression = 'SET status_service = :status, last_scrape_error = :error, last_error_type = :errorType, updatedAt = :updatedAt';
+      const expressionAttributeValues = {
+        ':status': status,
+        ':error': error,
+        ':errorType': errorType,
+        ':updatedAt': nowColombiaISO()
+      };
+
       const updateParams = {
         TableName: TABLES.DOMAINS,
         Key: { domainId },
-        UpdateExpression: 'SET status_service = :status, last_scrape_error = :error, updatedAt = :updatedAt',
-        ExpressionAttributeValues: {
-          ':status': status,
-          ':error': error,
-          ':updatedAt': nowColombiaISO()
-        }
+        UpdateExpression: updateExpression,
+        ExpressionAttributeValues: expressionAttributeValues
       };
 
       await dynamoDB.send(new UpdateCommand(updateParams));
