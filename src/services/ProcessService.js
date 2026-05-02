@@ -142,29 +142,26 @@ class ProcessService {
    */
   static async getBatchDetails(processId, page = 1, pageSize = 20, filters = {}) {
     try {
-      // Calcular lastKey para paginación
-      let lastKey = null;
-      if (page > 1) {
-        // Para páginas > 1, necesitamos obtener el lastKey de la página anterior
-        // Esto es una simplificación; en producción deberías cachear los lastKeys
-        const skipItems = (page - 1) * pageSize;
-        const prevResult = await ProcessDetailRepository.getByProcessId(processId, skipItems);
-        if (prevResult.length === skipItems) {
-          lastKey = {
-            detailId: prevResult[prevResult.length - 1].detailId,
-            processId: processId
-          };
-        }
+      // Obtener todos los detalles del proceso (para batches < 2000 items esto es más eficiente y preciso que Query segmentado con filtros)
+      let allItems = await ProcessDetailRepository.getAllByProcessId(processId);
+
+      // Aplicar filtros en memoria
+      if (filters.success !== undefined) {
+        allItems = allItems.filter(item => item.success === filters.success);
       }
 
-      const result = await ProcessDetailRepository.getPaginated(processId, lastKey, pageSize, filters);
+      // Calcular paginación
+      const totalItems = allItems.length;
+      const startIndex = (page - 1) * pageSize;
+      const paginatedItems = allItems.slice(startIndex, startIndex + pageSize);
 
       return {
-        items: result.items,
+        items: paginatedItems,
         pagination: {
           currentPage: page,
           pageSize: pageSize,
-          hasNextPage: result.hasMore,
+          total: totalItems,
+          hasNextPage: startIndex + pageSize < totalItems,
           hasPrevPage: page > 1
         }
       };

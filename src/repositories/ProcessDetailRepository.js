@@ -80,24 +80,35 @@ class ProcessDetailRepository {
   /**
    * Obtener todos los detalles de un proceso
    */
-  static async getByProcessId(processId, limit = 100) {
+  /**
+   * Obtener todos los detalles de un proceso
+   */
+  static async getAllByProcessId(processId) {
     try {
-      const result = await dynamoDB.send(
-        new QueryCommand({
+      let items = [];
+      let lastKey = null;
+
+      do {
+        const params = {
           TableName: TABLES.PROCESS_DETAIL,
           IndexName: 'processId-timestamp-index',
           KeyConditionExpression: 'processId = :processId',
           ExpressionAttributeValues: {
             ':processId': processId
           },
-          ScanIndexForward: false, // Orden descendente por timestamp
-          Limit: limit
-        })
-      );
+          ScanIndexForward: false
+        };
 
-      return result.Items || [];
+        if (lastKey) params.ExclusiveStartKey = lastKey;
+
+        const result = await dynamoDB.send(new QueryCommand(params));
+        items = items.concat(result.Items || []);
+        lastKey = result.LastEvaluatedKey;
+      } while (lastKey);
+
+      return items;
     } catch (error) {
-      console.error('Error getting details by processId:', error);
+      console.error('Error getting all details by processId:', error);
       throw error;
     }
   }
