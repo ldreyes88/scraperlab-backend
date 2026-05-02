@@ -100,7 +100,8 @@ async function seed() {
           config: {
             compare: '{{nodes.scrape-api.data.details.statusdate}}',
             onNoChange: 'STOP',
-            onDifference: 'CONTINUE'
+            onDifference: 'CONTINUE',
+            forceEveryHours: 12
           },
           next: 'notify-telegram'
         },

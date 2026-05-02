@@ -122,6 +122,7 @@ class PipelineService {
         if (nodeResult && nodeResult.action === 'STOP') {
           console.log(`[Pipeline] Deteniendo ejecución por solicitud del nodo ${node.id}: ${nodeResult.message || 'Sin detalles'}`);
           currentNodeId = null;
+          state.stopped = true;
         } else {
           currentNodeId = node.next;
         }
@@ -167,7 +168,15 @@ class PipelineService {
     if (processId) {
       // Determinar el status final analizando si hubo error
       const hasFailedStep = state.results.some(r => !r.success);
-      await ProcessRepository.updateStatus(processId, hasFailedStep ? 'failed' : 'completed');
+      let finalStatus = 'completed';
+      
+      if (hasFailedStep) {
+        finalStatus = 'failed';
+      } else if (state.stopped) {
+        finalStatus = 'stopped';
+      }
+      
+      await ProcessRepository.updateStatus(processId, finalStatus);
     }
 
     state.endTime = nowColombiaISO();
@@ -479,13 +488,19 @@ class PipelineService {
    * Manejador de CONDITION
    */
   async handleCondition(node, state, pipeline) {
-    const { compare, onNoChange = 'STOP', onDifference = 'CONTINUE' } = node.config;
+    const { 
+      compare, 
+      onNoChange = 'STOP', 
+      onDifference = 'CONTINUE',
+      forceEveryHours = null 
+    } = node.config;
     
     // 1. Obtener valor actual
     const currentValue = this.resolveTemplate(compare, state);
     console.log(`[ConditionNode] Valor actual para ${node.id}:`, currentValue);
 
     // 2. Buscar ejecución anterior exitosa de este mismo pipeline con el mismo input
+    // findLastByPipeline busca status='completed', ignorando los 'stopped'
     const lastProcess = await ProcessRepository.findLastByPipeline(pipeline.pipelineId, state.input);
     
     let hasChanged = true; // Por defecto asumimos cambio si no hay historial
@@ -499,11 +514,22 @@ class PipelineService {
       
       if (lastValue !== undefined && lastValue === currentValue) {
         hasChanged = false;
+        
+        // Verificar si debemos forzar por tiempo (Heartbeat)
+        if (forceEveryHours) {
+          const lastTime = new Date(lastProcess.timestamp).getTime();
+          const hoursSinceLast = (Date.now() - lastTime) / (1000 * 60 * 60);
+          
+          if (hoursSinceLast >= forceEveryHours) {
+            console.log(`[ConditionNode] Forzando ejecución por tiempo transcurrido: ${hoursSinceLast.toFixed(1)}h >= ${forceEveryHours}h`);
+            hasChanged = true;
+          }
+        }
       }
     }
 
     const action = hasChanged ? onDifference : onNoChange;
-    console.log(`[ConditionNode] Resultado: ${hasChanged ? 'CAMBIO' : 'SIN CAMBIO'} -> Acción: ${action}`);
+    console.log(`[ConditionNode] Resultado: ${hasChanged ? 'CAMBIO (o forzado)' : 'SIN CAMBIO'} -> Acción: ${action}`);
 
     return { 
       success: true, 

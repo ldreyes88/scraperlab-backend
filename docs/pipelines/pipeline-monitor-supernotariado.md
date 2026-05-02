@@ -49,16 +49,18 @@ Podríamos añadir un nodo intermedio llamado `filter-changes`:
 ```json
 {
   "id": "filter-changes",
-  "type": "CONDITION", // Nuevo tipo de nodo
+  "type": "CONDITION",
   "config": {
     "compare": "nodes.scrape-api.data.details.statusdate",
     "onNoChange": "STOP", // Si es igual, se detiene el pipeline
-    "onDifference": "CONTINUE" // Si es distinto, sigue a Telegram
+    "onDifference": "CONTINUE", // Si es distinto, sigue a Telegram
+    "forceEveryHours": 12 // Opcional: Fuerza continuar si han pasado 12h sin notificar
   }
 }
 ```
 
-**Requerimientos técnicos:**
+**Requerimientos técnicos (Completados):**
 *   Crear el tipo de nodo `CONDITION` en el `PipelineService`.
+*   Implementar estado `stopped` para ejecuciones que no detectan cambios.
+*   Soporte para `forceEveryHours` comparando con la última ejecución exitosa (`completed`).
 *   Asegurarnos de que el input (el turno) se guarde bien en los logs para poder buscar "el último de este turno".
-*   *Opcional:* Implementar una versión simplificada que guarde el "hash" del último resultado en la configuración del pipeline para comparaciones rápidas.
