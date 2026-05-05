@@ -1,9 +1,9 @@
 const PipelineRepository = require('../repositories/PipelineRepository');
 const PipelineService = require('../services/PipelineService');
-const { nowColombiaISO } = require('../utils/time');
+const cronParser = require('cron-parser');
 
 module.exports.handler = async (event) => {
-  console.log('[SchedulerHandler] Iniciando verificación de tareas programadas en pipelines...');
+  console.log('[SchedulerHandler] Iniciando verificación de cron jobs en pipelines...');
   
   try {
     const pipelines = await PipelineRepository.getAll();
@@ -19,23 +19,28 @@ module.exports.handler = async (event) => {
 
       for (let i = 0; i < updatedSchedules.length; i++) {
         const schedule = updatedSchedules[i];
-        const { input, intervalHours = 5, lastRun, enabled = true } = schedule;
+        const { input, cron, lastRun, enabled = true } = schedule;
 
-        if (!enabled) continue;
+        if (!enabled || !cron) continue;
 
         let shouldRun = false;
-        if (!lastRun) {
-          shouldRun = true;
-        } else {
-          const lastRunDate = new Date(lastRun);
-          const hoursSinceLastRun = (now - lastRunDate) / (1000 * 60 * 60);
-          if (hoursSinceLastRun >= intervalHours) {
+        
+        try {
+          // Obtener la última ejecución programada que ya pasó
+          const interval = cronParser.parseExpression(cron, { currentDate: now });
+          const lastScheduledRun = interval.prev().toDate();
+          const lastRunDate = lastRun ? new Date(lastRun) : new Date(0);
+
+          if (lastRunDate < lastScheduledRun) {
             shouldRun = true;
           }
+        } catch (err) {
+          console.error(`[SchedulerHandler] Cron inválido en pipeline ${pipeline.pipelineId}: ${cron}`, err.message);
+          continue;
         }
 
         if (shouldRun) {
-          console.log(`[SchedulerHandler] Ejecutando pipeline ${pipeline.pipelineId} para el turno ${input.turno || 'unknown'}`);
+          console.log(`[SchedulerHandler] Ejecutando cron job para pipeline ${pipeline.pipelineId} (${cron})`);
           try {
             await PipelineService.start(pipeline.pipelineId, input, { isSync: true, trigger: 'scheduler' });
             updatedSchedules[i] = { ...schedule, lastRun: now.toISOString() };
@@ -45,6 +50,7 @@ module.exports.handler = async (event) => {
           }
         }
       }
+
 
       if (updated) {
         await PipelineRepository.update(pipeline.pipelineId, { schedules: updatedSchedules });
