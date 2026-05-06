@@ -117,7 +117,7 @@ functions:
     handler: src/handlers/scheduler.handler
     timeout: 300
     events:
-      - schedule: rate(1 hour)
+      - schedule: rate(5 minutes)
 
 resources:
   Resources:

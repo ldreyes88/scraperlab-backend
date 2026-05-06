@@ -1,9 +1,10 @@
 const PipelineRepository = require('../repositories/PipelineRepository');
 const PipelineService = require('../services/PipelineService');
 const cronParser = require('cron-parser');
+const { COLOMBIA } = require('../utils/time');
 
 module.exports.handler = async (event) => {
-  console.log('[SchedulerHandler] Iniciando verificación de cron jobs en pipelines...');
+  console.log(`[SchedulerHandler] Iniciando verificación de cron jobs (TZ: ${COLOMBIA.tz})...`);
   
   try {
     const pipelines = await PipelineRepository.getAll();
@@ -26,8 +27,13 @@ module.exports.handler = async (event) => {
         let shouldRun = false;
         
         try {
-          // Obtener la última ejecución programada que ya pasó
-          const interval = cronParser.parseExpression(cron, { currentDate: now });
+          // Forzar la evaluación en la zona horaria de Colombia
+          const options = { 
+            currentDate: now,
+            tz: COLOMBIA.tz 
+          };
+          
+          const interval = cronParser.parseExpression(cron, options);
           const lastScheduledRun = interval.prev().toDate();
           const lastRunDate = lastRun ? new Date(lastRun) : new Date(0);
 
