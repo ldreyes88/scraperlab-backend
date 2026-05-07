@@ -33,7 +33,7 @@ module.exports.handler = async (event) => {
             tz: COLOMBIA.tz 
           };
           
-          const interval = cronParser.parseExpression(cron, options);
+          const interval = cronParser.CronExpressionParser.parse(cron, options);
           const lastScheduledRun = interval.prev().toDate();
           const lastRunDate = lastRun ? new Date(lastRun) : new Date(0);
 
