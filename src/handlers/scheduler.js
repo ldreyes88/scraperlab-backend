@@ -11,7 +11,8 @@ module.exports.handler = async (event) => {
     const now = new Date();
     
     for (const pipeline of pipelines) {
-      if (!pipeline.enabled || !pipeline.schedules || !Array.isArray(pipeline.schedules)) {
+      // Si el pipeline está desactivado o la automatización está pausada explícitamente, saltar
+      if (!pipeline.enabled || pipeline.automationEnabled === false || !pipeline.schedules || !Array.isArray(pipeline.schedules)) {
         continue;
       }
 
