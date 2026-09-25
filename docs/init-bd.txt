@@ -1,0 +1,93 @@
+Estimados señores,
+
+Reciban un cordial saludo.
+
+En BD Colombia, nos encontramos evaluando alternativas para la implementación de un servicio que permita realizar el relevamiento, extracción, procesamiento y estructuración de información de procesos de contratación pública publicados en SECOP II, con énfasis en licitaciones relacionadas con el sector salud y dispositivos médicos.
+
+Por lo anterior, agradecemos el envío de una propuesta técnico-económica considerando el siguiente alcance de referencia:
+
+1. Alcance Esperado
+Carga histórica: Construcción de una base de datos histórica correspondiente a los últimos 24 meses de información disponible en SECOP II.
+Actualización periódica: Actualización mensual de nuevos procesos publicados, cambios de estado de procesos existentes, y nuevas adjudicaciones o contratos asociados.
+Información requerida a nivel de proceso: Entidad contratante, NIT, ubicación, modalidad de contratación, número/referencia del proceso, código UNSPSC, fechas clave (publicación, cierre, adjudicación), oferente adjudicado, estado del proceso, valor adjudicado e información contractual asociada.
+Información requerida a nivel de producto o renglón: Descripción del producto, cantidad solicitada, unidad de medida, código UNSPSC, características técnicas, marca ofertada, cantidad adjudicada, precio unitario ofertado y valor total adjudicado.
+2. Entregables Esperados
+Base histórica en formato Excel y/o CSV junto con sus actualizaciones mensuales.
+Informe de cobertura y calidad de información.
+Documentación metodológica del proceso de extracción y transformación de datos (ETL).
+Indicadores de precisión y trazabilidad de los datos obtenidos.
+3. Criterios de Evaluación Obligatorios (Pregunta de Respuesta Requerida)
+Como parte de su propuesta técnica, solicitamos dar respuesta explícita y detallada a la siguiente pregunta:
+¿La solución propuesta permite extraer automáticamente información a nivel de renglón/producto desde los documentos adjuntos asociados al proceso SECOP (tales como PDFs, anexos técnicos y ofertas económicas), incluyendo cantidades, marcas, precios unitarios y adjudicaciones, o únicamente consulta información disponible en los campos estructurados de las bases de datos públicas de SECOP? (Favor especificar la tecnología utilizada: OCR, LLMs, arquitecturas de IA, etc., en caso de realizar lectura documental).
+4. Información Requerida en la Propuesta Económica y Corporativa
+Experiencia: Proyectos previos relacionados con SECOP II, contratación pública y/o el sector salud y dispositivos médicos (adjuntar casos de éxito o referencias).
+Aspectos técnicos: Metodología de extracción, arquitectura propuesta, infraestructura, uso de IA/OCR y políticas de seguridad/tratamiento de datos (Ley 1581 de 2012).
+Aspectos comerciales: Desglose de costos (Costo de implementación, costo de carga histórica, costo mensual de operación/mantenimiento, y posibles costos variables por procesamiento de documentos o consumo de tokens de IA).
+Tiempos: Tiempo estimado de implementación y vigencia de la propuesta económica.
+5. Consideraciones Adicionales Valoradas
+Se otorgará una puntuación superior a aquellas propuestas que faciliten futuras integraciones con herramientas de BI (PowerBI, Tableau), presenten mecanismos robustos de control de calidad de datos y demuestren automatización avanzada en la lectura de documentos no estructurados.
+Fecha Límite de Recepción de Propuestas: A más tardar el día 25 de Septiembre de 2026.
+Cualquier duda, consulta técnica o aclaración sobre este requerimiento será resuelta de manera centralizada a través de este canal de comunicación.
+Quedamos atentos a sus comentarios y confirmación de recepción.
+Cordialmente,
+
+
+Mauricio Colmenares
+Comprador Hub andino
+Purchasing
+Mauricio.Colmenares@bd.com
+Calle 97 # 23- 60
+
+3154885796
+Bogota, Distrito Capital de Bogotá, 110221
+
+CO
+
+bd.com
+
+
+ 
+
+
+BD Restricted
+*******************************************************************
+IMPORTANT MESSAGE FOR RECIPIENTS IN THE U.S.A.:
+This message may constitute an advertisement of a BD group's products or services or a solicitation of interest in them. If this is such a message and you would like to opt out of receiving future advertisements or solicitations from this BD group, please navigate to https://go.bd.com/UnsubscribePage.html . [BD.v1.0]
+*******************************************************************
+This message (which includes any attachments) is intended only for the designated recipient(s). It may contain confidential or proprietary information and may be subject to the attorney-client privilege or other confidentiality protections. If you are not a designated recipient, you may not review, use, copy or distribute this message. If you received this in error, please notify the sender by reply e-mail and delete this message. Thank you.
+*******************************************************************
+Corporate Headquarters Mailing Address: BD (Becton, Dickinson and Company) 1 Becton Drive Franklin Lakes, NJ 07417 U.S.A.
+
+...
+
+[Mensaje acortado]  Ver mensaje completo
+
+Luis Reyes
+lun, 14 sept, 4:54 p.m. (hace 7 días)
+Hola buen dia, Muchas gracias por tener en cuenta a la empresa Scraper Labs, En un par de días le enviaremos la propuesta indicada. Att: Luis Reyes Arquitecto S
+
+Mauricio Colmenares
+mié, 16 sept, 8:11 a.m. (hace 5 días)
+Buenos días Atentos a sus comentarios ya estamos programando reuniones para discutir las propuestas recibidas dada la premura. slds De: Luis Reyes <ldreyes@scra
+
+Mauricio Colmenares
+7:11 a.m. (hace 11 horas)
+para mí
+
+Buenos dias
+
+Algun update?
+
+slds
+
+
+Mauricio Colmenares
+Comprador Hub andino
+Purchasing
+Mauricio.Colmenares@bd.com
+Calle 97 # 23- 60
+
+3154885796
+Bogota, Distrito Capital de Bogotá, 110221
+
+CO
