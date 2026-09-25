@@ -43,8 +43,8 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       if (content && typeof content === 'object') {
         method += '+JSON-Direct';
 
-        // Si es búsqueda o el contenido es un arreglo de elementos, procesar como lista de búsqueda
-        if (scrapeType === 'search' || Array.isArray(content) || (content && (Array.isArray(content.results) || Array.isArray(content.data) || Array.isArray(content.items)))) {
+        // Si es búsqueda (o tipo no especificado con array), procesar como lista de búsqueda
+        if (scrapeType === 'search' || (scrapeType !== 'detail' && (Array.isArray(content) || (content && (Array.isArray(content.results) || Array.isArray(content.data) || Array.isArray(content.items)))))) {
           return this.handleSearchJsonExtraction(content, selectors, url, domainConfig.domainId, domainConfig);
         }
 
