@@ -42,14 +42,37 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       // Si el contenido ya es un objeto (API), usamos extracción directa por JSON Path
       if (content && typeof content === 'object') {
         method += '+JSON-Direct';
-        const extractedData = this.extractFromJson(content, selectors.jsonPath || {});
+
+        // Si es búsqueda o el contenido es un arreglo de elementos, procesar como lista de búsqueda
+        if (scrapeType === 'search' || Array.isArray(content) || (content && (Array.isArray(content.results) || Array.isArray(content.data) || Array.isArray(content.items)))) {
+          return this.handleSearchJsonExtraction(content, selectors, url, domainConfig.domainId, domainConfig);
+        }
+
+        // Si es detalle y vino un arreglo (ej: consulta SODA con filtro de 1 elemento), tomar el primer elemento
+        const targetObj = Array.isArray(content) ? (content[0] || {}) : content;
+        const jsonMapping = selectors.jsonPath || selectors.apiFields || selectors || {};
+        const extractedData = this.extractFromJson(targetObj, jsonMapping);
+
+        // Fallbacks inteligentes para APIs conocidas (ej: datos.gov.co / SECOP)
+        extractedData.title = extractedData.title || 
+                              targetObj.nombre_del_procedimiento || 
+                              targetObj.descripci_n_del_procedimiento || 
+                              targetObj.descripcion_del_procedimiento || 
+                              targetObj.title || '';
+        extractedData.currentPrice = extractedData.currentPrice || 
+                                     targetObj.precio_base || 
+                                     targetObj.valor_total_adjudicacion || 
+                                     targetObj.price || 0;
+        extractedData.url = extractedData.url || 
+                            targetObj.urlproceso?.url || 
+                            targetObj.url || url;
         
         return this.formatResponse({
           success: true,
           marketplace: domainConfig.domainId,
           method,
           url,
-          details: { ...extractedData, countryCode: domainConfig.countryCode }
+          details: { ...targetObj, ...extractedData, countryCode: domainConfig.countryCode }
         });
       }
 
@@ -215,6 +238,78 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       marketplace,
       results,
       method: 'DB-Dynamic-Search',
+      url
+    });
+  }
+
+  /**
+   * Maneja la extracción de múltiples registros cuando la respuesta es un JSON (API)
+   */
+  handleSearchJsonExtraction(content, selectors, url, marketplace, domainConfig = {}) {
+    const searchConfig = selectors.jsonPath || selectors.apiFields || selectors || {};
+    
+    let items = content;
+    if (!Array.isArray(items)) {
+      if (Array.isArray(items.results)) items = items.results;
+      else if (Array.isArray(items.data)) items = items.data;
+      else if (Array.isArray(items.items)) items = items.items;
+      else items = [items];
+    }
+
+    const results = items.map(item => {
+      if (!item || typeof item !== 'object') return null;
+
+      const title = this.getValueByPath(item, searchConfig.title) || 
+                    item.nombre_del_procedimiento || 
+                    item.descripci_n_del_procedimiento || 
+                    item.descripcion_del_procedimiento || 
+                    item.title || 
+                    item.name || '';
+
+      const currentPrice = this.getValueByPath(item, searchConfig.currentPrice || searchConfig.price || searchConfig.budget) || 
+                           item.precio_base || 
+                           item.valor_total_adjudicacion || 
+                           item.price || 0;
+
+      const originalPrice = this.getValueByPath(item, searchConfig.originalPrice) || currentPrice;
+
+      const itemUrl = this.getValueByPath(item, searchConfig.url || searchConfig.detailUrl) || 
+                      item.urlproceso?.url || 
+                      item.url || '';
+
+      const image = this.getValueByPath(item, searchConfig.image) || item.image || '';
+
+      const reference = this.getValueByPath(item, searchConfig.reference) || item.referencia_del_proceso || '';
+      const entity = this.getValueByPath(item, searchConfig.entity) || item.entidad || '';
+      const nit = this.getValueByPath(item, searchConfig.nit) || item.nit_entidad || '';
+      const status = this.getValueByPath(item, searchConfig.status) || item.estado_del_procedimiento || '';
+      const publishDate = this.getValueByPath(item, searchConfig.publishDate) || item.fecha_de_publicacion_del || '';
+      const unspsc = this.getValueByPath(item, searchConfig.unspsc) || item.codigo_principal_de_categoria || '';
+      const phase = this.getValueByPath(item, searchConfig.phase) || item.fase || '';
+
+      return {
+        ...item,
+        title,
+        currentPrice,
+        originalPrice,
+        url: itemUrl,
+        image,
+        reference,
+        entity,
+        nit,
+        status,
+        publishDate,
+        unspsc,
+        phase,
+        country: domainConfig.countryCode || 'CO'
+      };
+    }).filter(Boolean);
+
+    return this.formatSearchResponse({
+      success: true,
+      marketplace,
+      results,
+      method: 'DB-Dynamic-Search+JSON-Direct',
       url
     });
   }

@@ -1,0 +1,134 @@
+{
+  "domainId": "datos.gov.co",
+  "providerId": "api",
+  "countryCode": "CO",
+  "enabled": true,
+  "typeService": [
+    "scraping"
+  ],
+  "supportedTypes": [
+    "search",
+    "detail"
+  ],
+  "strategyOrder": [
+    "css"
+  ],
+  "useCss": true,
+  "useJsonLd": false,
+  "useMeta": false,
+  "useNextData": false,
+  "useScripts": false,
+  "customRateLimit": {
+    "requestsPerMinute": 60,
+    "cooldownSeconds": 10
+  },
+  "subdomains": [],
+  "searchUrlTemplate": "https://www.datos.gov.co/resource/p6dx-8zbt.json?$where=(starts_with(codigo_principal_de_categoria,'V1.42') OR starts_with(codigo_principal_de_categoria,'V1.51'))&$order=fecha_de_publicacion_del DESC&$limit=100",
+  "scraperConfig": {
+    "search": {
+      "containerSelector": "",
+      "titleSelector": "",
+      "priceSelector": "",
+      "originalPriceSelector": "",
+      "urlSelector": "",
+      "imageSelector": "",
+      "scripts": [],
+      "jsonPath": {
+        "title": "nombre_del_procedimiento",
+        "description": "descripci_n_del_procedimiento",
+        "currentPrice": "precio_base",
+        "reference": "referencia_del_proceso",
+        "entity": "entidad",
+        "nit": "nit_entidad",
+        "status": "estado_del_procedimiento",
+        "phase": "fase",
+        "unspsc": "codigo_principal_de_categoria",
+        "publishDate": "fecha_de_publicacion_del",
+        "closingDate": "fecha_de_recepcion_de",
+        "url": "urlproceso.url"
+      },
+      "apiFields": {
+        "id": "id_del_proceso",
+        "reference": "referencia_del_proceso",
+        "entity": "entidad",
+        "nit": "nit_entidad",
+        "title": "nombre_del_procedimiento",
+        "description": "descripci_n_del_procedimiento",
+        "unspsc": "codigo_principal_de_categoria",
+        "publishDate": "fecha_de_publicacion_del",
+        "closingDate": "fecha_de_recepcion_de",
+        "budget": "precio_base",
+        "status": "estado_del_procedimiento",
+        "phase": "fase",
+        "detailUrl": "urlproceso.url"
+      }
+    },
+    "detail": {
+      "jsonPath": {
+        "title": "nombre_del_procedimiento",
+        "description": "descripci_n_del_procedimiento",
+        "currentPrice": "precio_base",
+        "reference": "referencia_del_proceso",
+        "entity": "entidad",
+        "nit": "nit_entidad",
+        "status": "estado_del_procedimiento",
+        "publishDate": "fecha_de_publicacion_del",
+        "detailUrl": "urlproceso.url"
+      },
+      "css": {
+        "title": "",
+        "price": "",
+        "originalPrice": "",
+        "reference": "",
+        "entity": "",
+        "nit": "",
+        "availability": "",
+        "image": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "pricePath": "",
+        "originalPricePath": "",
+        "titlePath": "",
+        "imagePath": ""
+      },
+      "jsonLd": {
+        "pricePath": "",
+        "originalPricePath": ""
+      },
+      "scripts": []
+    },
+    "searchSpecific": {
+      "css": {
+        "title": "",
+        "price": "",
+        "originalPrice": "",
+        "url": "",
+        "image": "",
+        "availability": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "pricePath": "",
+        "originalPricePath": "",
+        "titlePath": "",
+        "imagePath": ""
+      },
+      "jsonLd": {
+        "pricePath": "",
+        "originalPricePath": ""
+      },
+      "scripts": []
+    }
+  },
+  "providerConfig": {
+    "search": {
+      "timeout": 30000
+    },
+    "detail": {
+      "timeout": 30000
+    }
+  },
+  "createdAt": "2026-09-24T21:50:00-05:00",
+  "updatedAt": "2026-09-24T21:50:00-05:00"
+}

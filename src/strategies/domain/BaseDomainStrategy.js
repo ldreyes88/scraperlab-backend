@@ -584,6 +584,7 @@ extractFromScripts($, patterns = []) {
       scrapeType: 'search',
       marketplace,
       results: results.map(item => ({
+        ...item,
         title: item.title || '',
         currentPrice: cleanPrice(item.currentPrice || 0, item.country || null, url),
         originalPrice: cleanPrice(item.originalPrice || item.currentPrice || 0, item.country || null, url),
