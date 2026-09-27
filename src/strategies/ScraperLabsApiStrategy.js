@@ -1,4 +1,4 @@
-// scraperlab-backend/src/strategies/LambdaChromiumStrategy.js
+// scraperlab-backend/src/strategies/ScraperLabsApiStrategy.js
 
 const BaseStrategy = require('./BaseStrategy');
 const cheerio = require('cheerio');
@@ -6,14 +6,14 @@ const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 
 /**
- * LambdaChromiumStrategy - Proveedor de Scraping Serverless basado en Chromium
+ * ScraperLabsApiStrategy - Proveedor Propio de Scraping Serverless Headless de ScraperLabs
  * Ejecuta un navegador headless real en AWS Lambda usando @sparticuz/chromium y puppeteer-core.
- * Costo: ~$0 (solo el cómputo de la función Lambda).
- * Soporta ejecución de JavaScript, SPAs, espera de selectores y evasión de bloqueos.
+ * Costo: ~$0 en proxies de terceros.
+ * Soporta ejecución de JavaScript, SPAs, espera de selectores y cookies de sesión.
  */
-class LambdaChromiumStrategy extends BaseStrategy {
+class ScraperLabsApiStrategy extends BaseStrategy {
   constructor() {
-    super('LambdaChromium');
+    super('ScraperLabsApi');
   }
 
   /**
@@ -65,7 +65,7 @@ class LambdaChromiumStrategy extends BaseStrategy {
   }
 
   /**
-   * Realiza el scraping usando Chromium Headless
+   * Realiza el scraping usando Chromium Headless de ScraperLabs
    * @param {string} url - URL a navegar
    * @param {Object} domainConfig - Configuración del dominio y provider
    */
@@ -78,7 +78,7 @@ class LambdaChromiumStrategy extends BaseStrategy {
     const isLambda = Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT);
     const executablePath = await this.getExecutablePath(chromium);
 
-    console.log(`[LambdaChromium] Navegando a: ${url} (Entorno: ${isLambda ? 'AWS Lambda' : 'Local'})`);
+    console.log(`[ScraperLabsApi] Navegando a: ${url} (Entorno: ${isLambda ? 'AWS Lambda' : 'Local'})`);
 
     const launchArgs = isLambda
       ? chromium.args
@@ -144,20 +144,20 @@ class LambdaChromiumStrategy extends BaseStrategy {
 
       // Esperar selector específico si está configurado
       if (providerConfig.wait_for_selector) {
-        console.log(`[LambdaChromium] Esperando selector: ${providerConfig.wait_for_selector}`);
+        console.log(`[ScraperLabsApi] Esperando selector: ${providerConfig.wait_for_selector}`);
         await page.waitForSelector(providerConfig.wait_for_selector, { timeout: 15000 });
       }
 
       // Espera adicional en ms para permitir ejecución de scripts dinámicos
       const waitTime = parseInt(providerConfig.wait || 0, 10);
       if (waitTime > 0) {
-        console.log(`[LambdaChromium] Esperando ${waitTime}ms para carga dinámica...`);
+        console.log(`[ScraperLabsApi] Esperando ${waitTime}ms para carga dinámica...`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       }
 
       // Extraer HTML completo renderizado
       const html = await page.content();
-      console.log(`[LambdaChromium] Contenido obtenido exitosamente (${html.length} bytes).`);
+      console.log(`[ScraperLabsApi] Contenido obtenido exitosamente (${html.length} bytes).`);
 
       // Si no hay selectores, retornar el HTML crudo para que GenericDynamicStrategy lo procese
       if (!selectors || Object.keys(selectors).length === 0) {
@@ -168,7 +168,7 @@ class LambdaChromiumStrategy extends BaseStrategy {
       return this.parseHtml(html, selectors, url);
 
     } catch (error) {
-      console.error(`[LambdaChromium] Error al scrapear ${url}:`, error.message);
+      console.error(`[ScraperLabsApi] Error al scrapear ${url}:`, error.message);
       throw error;
     } finally {
       if (page) {
@@ -210,4 +210,4 @@ class LambdaChromiumStrategy extends BaseStrategy {
   }
 }
 
-module.exports = LambdaChromiumStrategy;
+module.exports = ScraperLabsApiStrategy;

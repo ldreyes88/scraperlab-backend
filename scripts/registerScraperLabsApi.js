@@ -1,13 +1,15 @@
-// scraperlab-backend/scripts/registerLambdaChromiumProvider.js
+// scraperlab-backend/scripts/registerScraperLabsApi.js
 require('dotenv').config();
 
+const { dynamoDB, TABLES } = require('../src/config/database');
+const { DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const ProviderRepository = require('../src/repositories/ProviderRepository');
 
-async function registerLambdaChromium() {
+async function updateProviders() {
   const providerData = {
-    providerId: 'lambda-chromium',
-    name: 'AWS Lambda Chromium',
-    description: 'Navegador Headless Serverless (@sparticuz/chromium + Puppeteer) ejecutándose directamente en AWS Lambda. Costo $0 en proxies, soporte completo de JS, SPAs y cookies de sesión.',
+    providerId: 'scraperlabsapi',
+    name: 'ScraperLabsApi',
+    description: 'Motor propio de scraping serverless y headless de ScraperLabs (@sparticuz/chromium + Puppeteer) corriendo en AWS Lambda. Costo $0 en proxies, soporte completo de JS, SPAs y cookies de sesión.',
     type: 'API',
     enabled: true,
     authType: 'none',
@@ -64,12 +66,26 @@ async function registerLambdaChromium() {
   };
 
   try {
-    console.log('Registrando proveedor lambda-chromium en DynamoDB...');
+    console.log('1. Registrando ScraperLabsApi en DynamoDB...');
     const result = await ProviderRepository.create(providerData);
-    console.log('✅ Proveedor registrado exitosamente en DynamoDB:', result.providerId || 'lambda-chromium');
+    console.log('✅ Provider registrado exitosamente:', result.name, `(ID: ${result.providerId})`);
+
+    console.log('2. Limpiando provider anterior lambda-chromium...');
+    await dynamoDB.send(
+      new DeleteCommand({
+        TableName: TABLES.PROVIDERS,
+        Key: { providerId: 'lambda-chromium' }
+      })
+    );
+    console.log('✅ Provider anterior eliminado de DynamoDB.');
+
+    const all = await ProviderRepository.getAll();
+    console.log('\nProviders actuales en DynamoDB:');
+    all.forEach(p => console.log(` - ${p.name || p.providerId} [ID: ${p.providerId}]`));
+
   } catch (error) {
-    console.error('❌ Error registrando proveedor:', error.message);
+    console.error('❌ Error actualizando providers:', error.message);
   }
 }
 
-registerLambdaChromium();
+updateProviders();

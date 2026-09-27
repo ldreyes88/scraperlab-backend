@@ -46,7 +46,7 @@ Define el esquema JSON de los parámetros que el dominio pasará al provider.
 | `providerId` | Nombre | Tipo | Costo Base | Cuándo usarlo |
 | :--- | :--- | :--- | :--- | :--- |
 | **`api`** | Direct API Strategy | `API` | **$0** | APIs públicas, endpoints REST abiertos (`datos.gov.co`), sitios sin bot-protection ni captchas. |
-| **`lambda-chromium`** | AWS Lambda Chromium | `API` | **~$0** | Sitios SPA, páginas dinámicas con React/Vue, espera de selectores y navegación con navegador real sin pagar servicios de proxy externos. |
+| **`scraperlabsapi`** | ScraperLabsApi | `API` | **~$0** | Motor propio de scraping serverless y headless (@sparticuz/chromium + Puppeteer) corriendo en AWS Lambda. Ideal para SPAs, React/Vue, espera de selectores y navegación real sin pagar servicios de proxy externos. |
 | **`scraperapi`** | ScraperAPI V2 | `API` | Por crédito | Sitios con antibot fuerte (Cloudflare, Akamai, Datadome) que requieren proxies rotativos residenciales. |
 | **`oxylabs`** | Oxylabs E-commerce API | `API` | Por crédito | Sitios protegidos que requieren proxies residenciales enterprise o parsing nativo de e-commerce. |
 | **`gemini-ai`** | Gemini AI | `AI` | Por token | Normalización, clasificación, enriquecimiento PIM y extracción inteligente con LLMs. |
@@ -191,11 +191,11 @@ Al crear un nuevo dominio, sigue este "Checklist":
 }
 ```
 
-### Ejemplo Completo: Dominio SPA usando `lambda-chromium`
+### Ejemplo Completo: Dominio SPA usando `ScraperLabsApi`
 ```json
 {
   "domainId": "portal-dinamico.com",
-  "providerId": "lambda-chromium",
+  "providerId": "scraperlabsapi",
   "countryCode": "CO",
   "enabled": true,
   "typeService": ["scraping"],
