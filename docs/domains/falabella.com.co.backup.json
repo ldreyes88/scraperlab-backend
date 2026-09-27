@@ -1,0 +1,82 @@
+{
+  "countryCode": "CO",
+  "createdAt": "2026-02-02T20:45:35.688Z",
+  "customRateLimit": null,
+  "domainId": "falabella.com.co",
+  "enabled": true,
+  "last_error_type": "api_error",
+  "last_scrape_error": "ScraperAPI error: Request failed with status code 401",
+  "providerConfig": {
+    "searchSpecific": {
+      "render": true,
+      "premium": true
+    },
+    "search": {
+      "wait": 3000,
+      "device_type": "desktop",
+      "premium": true,
+      "render": true
+    },
+    "detail": {
+      "device_type": "desktop"
+    }
+  },
+  "providerId": "scraperapi",
+  "scraperConfig": {
+    "searchSpecific": {
+      "scripts": [],
+      "css": {
+        "image": "img",
+        "containerSelector": ".grid-pod",
+        "title": ".pod-subTitle, [id^='testId-pod-displaySubTitle-'], [id^='testId-pod-display-name']",
+        "price": "[data-internet-price], [id^='testId-pod-price-'], .copy10",
+        "url": "a[href*='/product/'], a.pod-link"
+      }
+    },
+    "search": {
+      "containerSelector": ".grid-pod",
+      "priceSelector": "[data-internet-price], [id^='testId-pod-price-'], .prices-0, .copy10",
+      "scripts": [],
+      "titleSelector": ".pod-subTitle, [id^='testId-pod-displaySubTitle-'], [id^='testId-pod-display-name']",
+      "urlSelector": "a[href*='/product/'], a.pod-link",
+      "imageSelector": "img"
+    },
+    "detail": {
+      "scripts": [],
+      "css": {
+        "image": "img.image-gallery-image",
+        "originalPrice": "span.copy12",
+        "title": "h1.product-name",
+        "price": "span.copy10, [id^='testId-pdp-price-']"
+      },
+      "jsonLd": {
+        "titlePath": "name",
+        "imagePath": "image",
+        "pricePath": "price"
+      }
+    }
+  },
+  "status_service": "failed",
+  "strategyOrder": [
+    "jsonLd",
+    "scripts",
+    "nextData",
+    "css",
+    "meta"
+  ],
+  "subdomains": [],
+  "supportedTypes": [
+    "detail",
+    "search",
+    "searchSpecific"
+  ],
+  "typeService": [
+    "scraping"
+  ],
+  "updatedAt": "2026-09-27T13:33:11-05:00",
+  "useCss": true,
+  "useJsonLd": true,
+  "useMeta": true,
+  "useNextData": true,
+  "useScripts": true
+}
