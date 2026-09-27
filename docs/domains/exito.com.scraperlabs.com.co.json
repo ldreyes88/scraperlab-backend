@@ -62,8 +62,8 @@
     "detail": {
       "css": {
         "title": "h1[class*='product-title_product-title__heading']",
-        "price": "[class*='price_fs-price']",
-        "originalPrice": "[class*='product-price_fs-price-listing']",
+        "price": "p[class*='ProductPrice_container__price']",
+        "originalPrice": "p[class*='price-dashed']",
         "image": "div[class*='ImgZoom_ContainerImage'] img",
         "availability": ""
       },
