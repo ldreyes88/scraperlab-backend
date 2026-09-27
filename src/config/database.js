@@ -16,10 +16,11 @@ const dynamoDB = DynamoDBDocumentClient.from(client, {
 });
 
 const TABLES = {
-  PROVIDERS: process.env.PROVIDERS_TABLE_NAME,
-  DOMAINS: process.env.DOMAINS_TABLE_NAME,
-  PROCESS: process.env.PROCESS_TABLE_NAME,
-  PROCESS_DETAIL: process.env.PROCESS_DETAIL_TABLE_NAME,
+  PROVIDERS: process.env.PROVIDERS_TABLE_NAME || 'ScraperLab-Providers',
+  DOMAINS: process.env.DOMAINS_TABLE_NAME || 'ScraperLab-Domains',
+  PROCESS: process.env.PROCESS_TABLE_NAME || 'ScraperLab-Process',
+  PROCESS_DETAIL: process.env.PROCESS_DETAIL_TABLE_NAME || 'ScraperLab-Process-Detail',
+  USERS: process.env.USERS_TABLE_NAME || 'ScraperLab-Users',
   CLIENTS: process.env.CLIENTS_TABLE_NAME || 'ScraperLab-Clients',
   PIPELINES: process.env.PIPELINES_TABLE_NAME || 'ScraperLab-Pipelines'
 };
