@@ -1,0 +1,97 @@
+{
+  "domainId": "exito.com",
+  "providerId": "scraperlabsapi",
+  "countryCode": "CO",
+  "enabled": true,
+  "supportedTypes": [
+    "detail",
+    "search",
+    "searchSpecific"
+  ],
+  "providerConfig": {
+    "detail": {
+      "wait": 2000,
+      "block_images": true,
+      "timeout": 45000
+    },
+    "search": {
+      "wait": 2000,
+      "wait_for_selector": "article[class*='productCard_productCard']",
+      "block_images": true,
+      "timeout": 45000
+    },
+    "searchSpecific": {
+      "wait": 2000,
+      "wait_for_selector": "article[class*='productCard_productCard']",
+      "block_images": true,
+      "timeout": 45000
+    }
+  },
+  "scraperConfig": {
+    "search": {
+      "containerSelector": "article[class*='productCard_productCard']",
+      "titleSelector": "h3[class*='styles_name']",
+      "priceSelector": "p[class*='ProductPrice_container__price']",
+      "originalPriceSelector": "p[class*='price-dashed']",
+      "urlSelector": "a[class*='productCard_productLinkInfo']",
+      "imageSelector": "img",
+      "scripts": []
+    },
+    "searchSpecific": {
+      "css": {
+        "title": "h3[class*='styles_name']",
+        "price": "p[class*='ProductPrice_container__price']",
+        "originalPrice": "p[class*='price-dashed']",
+        "url": "a[class*='productCard_productLinkInfo']",
+        "image": "img",
+        "availability": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "pricePath": "",
+        "originalPricePath": "",
+        "titlePath": "",
+        "imagePath": ""
+      },
+      "jsonLd": {
+        "pricePath": "",
+        "originalPricePath": ""
+      },
+      "scripts": []
+    },
+    "detail": {
+      "css": {
+        "title": "h1[class*='product-title_product-title__heading']",
+        "price": "[class*='price_fs-price']",
+        "originalPrice": "[class*='product-price_fs-price-listing']",
+        "image": "div[class*='ImgZoom_ContainerImage'] img",
+        "availability": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "pricePath": "",
+        "originalPricePath": "",
+        "titlePath": "",
+        "imagePath": ""
+      },
+      "jsonLd": {
+        "pricePath": "price",
+        "originalPricePath": "listPrice"
+      },
+      "scripts": []
+    }
+  },
+  "strategyOrder": [
+    "jsonLd",
+    "scripts",
+    "css",
+    "meta",
+    "nextData"
+  ],
+  "useJsonLd": true,
+  "useCss": true,
+  "useMeta": true,
+  "useNextData": false,
+  "useScripts": false,
+  "subdomains": []
+}

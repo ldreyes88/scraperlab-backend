@@ -1,0 +1,73 @@
+{
+  "countryCode": "CO",
+  "createdAt": "2026-01-31T04:29:05.061Z",
+  "customRateLimit": null,
+  "domainId": "exito.com",
+  "enabled": true,
+  "last_error_type": "api_error",
+  "last_scrape_error": "ScraperAPI error: Request failed with status code 401",
+  "providerConfig": {
+    "search": {
+      "render": true,
+      "device_type": "desktop"
+    }
+  },
+  "providerId": "scraperapi",
+  "scraperConfig": {
+    "searchSpecific": {
+      "scripts": [],
+      "css": {
+        "image": "img",
+        "originalPrice": "[class*='product-price_fs-price-listing']",
+        "title": "h3[class*='styles_name']",
+        "price": "[class*='price_fs-price']",
+        "url": "a[class*='productCard_productLinkInfo']"
+      }
+    },
+    "search": {
+      "originalPriceSelector": "[class*='product-price_fs-price-listing']",
+      "containerSelector": "article[class*='productCard_productCard']",
+      "urlSelector": "a[class*='productCard_productLinkInfo']",
+      "priceSelector": "[class*='price_fs-price']",
+      "scripts": [],
+      "titleSelector": "h3[class*='styles_name']",
+      "imageSelector": "img"
+    },
+    "detail": {
+      "scripts": [],
+      "css": {
+        "image": "div[class*='ImgZoom_ContainerImage'] img",
+        "originalPrice": "[class*='product-price_fs-price-listing']",
+        "title": "h1[class*='product-title_product-title__heading']",
+        "price": "[class*='price_fs-price']"
+      },
+      "jsonLd": {
+        "originalPricePath": "listPrice",
+        "pricePath": "price"
+      }
+    }
+  },
+  "status_service": "failed",
+  "strategyOrder": [
+    "jsonLd",
+    "scripts",
+    "css",
+    "meta",
+    "nextData"
+  ],
+  "subdomains": [],
+  "supportedTypes": [
+    "detail",
+    "search",
+    "searchSpecific"
+  ],
+  "typeService": [
+    "scraping"
+  ],
+  "updatedAt": "2026-09-25T18:03:35-05:00",
+  "useCss": true,
+  "useJsonLd": true,
+  "useMeta": true,
+  "useNextData": false,
+  "useScripts": false
+}
