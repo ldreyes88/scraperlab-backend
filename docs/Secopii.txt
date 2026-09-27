@@ -1,0 +1,26 @@
+2. ¿Por qué los 3 procesos que ves en SECOP II (ej: CD-IDPAC-692-2026) no salieron en ScraperLabs?
+Frecuencia de sincronización de datos.gov.co:
+El portal web community.secop.gov.co es el sistema transaccional en tiempo real al segundo.
+La API de datos.gov.co es el repositorio oficial de datos abiertos del Estado. Colombia Compra Eficiente lo actualiza mediante un volcado diario nocturno (Batch ETL) (en los metadatos oficiales del dataset figura "Frecuencia de Actualización": "Diaria").
+Los procesos de tu captura en SECOP II fueron publicados hoy a las 6:16 PM y 6:18 PM (hace pocas horas), por lo que aún están pendientes del volcado de la noche hacia datos.gov.co.
+En datos.gov.co, el último corte consolidado cargado es el del 24 de septiembre de 2026 (que contiene 2.346 procesos de ese día).
+3. ¿Cómo consultar para que te concuerden exactamente?
+Para contrastar y validar que ScraperLabs y SECOP II devuelven exactamente lo mismo:
+
+Opción A: Consultar por la misma Referencia en ambos sitios
+En ScraperLabs pega:
+text
+https://www.datos.gov.co/resource/p6dx-8zbt.json?referencia_del_proceso=04-05-09-26
+En el portal de SECOP II, en el campo Referencia, pon: 04-05-09-26.
+Ambos te mostrarán exactamente la misma cuantía ($4.799.999 COP) y la misma entidad.
+
+Opción B: Consultar por palabra clave o descripción
+Si quieres buscar procesos que contengan una palabra en el objeto (por ejemplo impresora o jeringa):
+text
+https://www.datos.gov.co/resource/p6dx-8zbt.json?$where=starts_with(nombre_del_procedimiento,'Compra de impresora')&$limit=10
+En SECOP II pon en el campo Descripción: Compra de impresora.
+
+Opción C: Acotar el rango de fecha al día consolidado (24 de septiembre)
+En ScraperLabs:
+text
+https://www.datos.gov.co/resource/p6dx-8zbt.json?$where=fecha_de_publicacion_del >= '2026-09-24T00:00:00.000' and fecha_de_publicacion_del < '2026-09-25T00:00:00.000'&$order=precio_base DESC&$limit=10

@@ -1,6 +1,7 @@
 const ScraperAPIStrategy = require('./ScraperAPIStrategy');
 const OxylabsStrategy = require('./OxylabsStrategy');
 const DirectAPIStrategy = require('./DirectAPIStrategy');
+const LambdaChromiumStrategy = require('./LambdaChromiumStrategy');
 
 // Estrategias de dominio
 const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
@@ -14,7 +15,10 @@ class StrategyFactory {
     'scraperapi': ScraperAPIStrategy,
     'oxylabs': OxylabsStrategy,
     'api': DirectAPIStrategy,
-    'direct': DirectAPIStrategy
+    'direct': DirectAPIStrategy,
+    'lambda-chromium': LambdaChromiumStrategy,
+    'chromium': LambdaChromiumStrategy,
+    'serverless-chromium': LambdaChromiumStrategy
   };
 
   /**

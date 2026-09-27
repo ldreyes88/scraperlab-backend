@@ -41,6 +41,16 @@ Define el esquema JSON de los parámetros que el dominio pasará al provider.
 }
 ```
 
+### Catálogo de Proveedores del Sistema
+
+| `providerId` | Nombre | Tipo | Costo Base | Cuándo usarlo |
+| :--- | :--- | :--- | :--- | :--- |
+| **`api`** | Direct API Strategy | `API` | **$0** | APIs públicas, endpoints REST abiertos (`datos.gov.co`), sitios sin bot-protection ni captchas. |
+| **`lambda-chromium`** | AWS Lambda Chromium | `API` | **~$0** | Sitios SPA, páginas dinámicas con React/Vue, espera de selectores y navegación con navegador real sin pagar servicios de proxy externos. |
+| **`scraperapi`** | ScraperAPI V2 | `API` | Por crédito | Sitios con antibot fuerte (Cloudflare, Akamai, Datadome) que requieren proxies rotativos residenciales. |
+| **`oxylabs`** | Oxylabs E-commerce API | `API` | Por crédito | Sitios protegidos que requieren proxies residenciales enterprise o parsing nativo de e-commerce. |
+| **`gemini-ai`** | Gemini AI | `AI` | Por token | Normalización, clasificación, enriquecimiento PIM y extracción inteligente con LLMs. |
+
 ---
 
 ## 2. Dominios
@@ -177,6 +187,36 @@ Al crear un nuevo dominio, sigue este "Checklist":
   "providerConfig": {
     "search": { "premium": true, "render": true, "country_code": "co" },
     "detail": { "premium": true, "render": true, "country_code": "inline" }
+  }
+}
+```
+
+### Ejemplo Completo: Dominio SPA usando `lambda-chromium`
+```json
+{
+  "domainId": "portal-dinamico.com",
+  "providerId": "lambda-chromium",
+  "countryCode": "CO",
+  "enabled": true,
+  "typeService": ["scraping"],
+  "supportedTypes": ["detail"],
+  "strategyOrder": ["css"],
+  "scraperConfig": {
+    "detail": {
+      "css": {
+        "title": "h1.contract-title",
+        "price": ".contract-amount",
+        "reference": ".badge-reference"
+      }
+    }
+  },
+  "providerConfig": {
+    "detail": {
+      "wait": 2000,
+      "wait_for_selector": "table.contract-documents",
+      "block_images": true,
+      "timeout": 40000
+    }
   }
 }
 ```
