@@ -174,10 +174,29 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       throw error;
     } finally {
       if (page) {
-        try { await page.close(); } catch (e) {}
+        try {
+          page.removeAllListeners();
+          await Promise.race([
+            page.close(),
+            new Promise((resolve) => setTimeout(resolve, 2000))
+          ]);
+        } catch (e) {
+          console.warn('[ScraperLabsApi] Warning cerrando página:', e.message);
+        }
       }
       if (browser) {
-        try { await browser.close(); } catch (e) {}
+        try {
+          const proc = browser.process();
+          await Promise.race([
+            browser.close(),
+            new Promise((resolve) => setTimeout(resolve, 3000))
+          ]);
+          if (proc && !proc.killed) {
+            try { proc.kill('SIGKILL'); } catch (err) {}
+          }
+        } catch (e) {
+          console.warn('[ScraperLabsApi] Warning cerrando browser:', e.message);
+        }
       }
     }
   }

@@ -1,9 +1,12 @@
 const serverless = require('serverless-http');
 const app = require('./server');
 
-const handler = serverless(app, {
+const serverlessHandler = serverless(app, {
   binary: ['image/*'],
   request: (request, event, context) => {
+    if (context) {
+      context.callbackWaitsForEmptyEventLoop = false;
+    }
     console.log('📥 Lambda request:', {
       method: request.method,
       url: request.url,
@@ -26,4 +29,9 @@ const handler = serverless(app, {
   }
 });
 
-module.exports.handler = handler;
+module.exports.handler = async (event, context) => {
+  if (context) {
+    context.callbackWaitsForEmptyEventLoop = false;
+  }
+  return await serverlessHandler(event, context);
+};
