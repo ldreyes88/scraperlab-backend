@@ -1,8 +1,3 @@
-const ScraperAPIStrategy = require('./ScraperAPIStrategy');
-const OxylabsStrategy = require('./OxylabsStrategy');
-const DirectAPIStrategy = require('./DirectAPIStrategy');
-const ScraperLabsApiStrategy = require('./ScraperLabsApiStrategy');
-
 // Estrategias de dominio
 const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
 
@@ -11,27 +6,37 @@ const GenericDynamicStrategy = require('./domain/GenericDynamicStrategy');
  * Actualmente simplificada para operar 100% bajo configuración de Base de Datos.
  */
 class StrategyFactory {
-  static providerStrategies = {
-    'scraperapi': ScraperAPIStrategy,
-    'oxylabs': OxylabsStrategy,
-    'api': DirectAPIStrategy,
-    'direct': DirectAPIStrategy,
-    'scraperlabsapi': ScraperLabsApiStrategy,
-    'scraperlabs': ScraperLabsApiStrategy,
-    'lambda-chromium': ScraperLabsApiStrategy
-  };
-
   /**
-   * Obtiene la estrategia cruda para el proveedor (ScraperAPI, Oxylabs)
+   * Obtiene la estrategia cruda para el proveedor (ScraperAPI, Oxylabs, ScraperLabsApi)
+   * Usa carga bajo demanda (lazy-loading) para máxima velocidad de arranque e inmunidad a fallos de inicialización.
    */
   static getStrategy(providerId) {
     if (!providerId) throw new Error('Se requiere providerId para obtener la estrategia del proveedor');
 
-    const StrategyClass = this.providerStrategies[providerId.toLowerCase()];
-    if (StrategyClass) {
-      return new StrategyClass();
+    const pid = providerId.toLowerCase();
+    switch (pid) {
+      case 'scraperapi': {
+        const ScraperAPIStrategy = require('./ScraperAPIStrategy');
+        return new ScraperAPIStrategy();
+      }
+      case 'oxylabs': {
+        const OxylabsStrategy = require('./OxylabsStrategy');
+        return new OxylabsStrategy();
+      }
+      case 'api':
+      case 'direct': {
+        const DirectAPIStrategy = require('./DirectAPIStrategy');
+        return new DirectAPIStrategy();
+      }
+      case 'scraperlabsapi':
+      case 'scraperlabs':
+      case 'lambda-chromium': {
+        const ScraperLabsApiStrategy = require('./ScraperLabsApiStrategy');
+        return new ScraperLabsApiStrategy();
+      }
+      default:
+        throw new Error(`Proveedor no soportado: ${providerId}`);
     }
-    throw new Error(`Proveedor no soportado: ${providerId}`);
   }
 
   /**

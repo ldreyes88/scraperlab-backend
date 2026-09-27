@@ -2,7 +2,6 @@
 
 const BaseStrategy = require('./BaseStrategy');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 
 /**
@@ -72,7 +71,10 @@ class ScraperLabsApiStrategy extends BaseStrategy {
   async scrape(url, domainConfig = {}) {
     const { providerConfig = {}, selectors } = domainConfig;
 
-    const chromiumMod = require('@sparticuz/chromium');
+    const puppeteerMod = await import('puppeteer-core');
+    const puppeteer = puppeteerMod.default || puppeteerMod;
+
+    const chromiumMod = await import('@sparticuz/chromium');
     const chromium = chromiumMod.default || chromiumMod;
 
     const isLambda = Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT);
