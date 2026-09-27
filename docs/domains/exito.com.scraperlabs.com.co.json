@@ -82,10 +82,10 @@
     }
   },
   "strategyOrder": [
-    "jsonLd",
-    "scripts",
     "css",
+    "jsonLd",
     "meta",
+    "scripts",
     "nextData"
   ],
   "useJsonLd": true,

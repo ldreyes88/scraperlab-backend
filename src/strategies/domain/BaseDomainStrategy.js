@@ -186,11 +186,19 @@ class BaseDomainStrategy {
                   }
                 }
                 // Prioridad 3: Heurística de múltiples ofertas (Común en Falabella donde el segundo offer es el original)
+                // Solo si pertenecen al mismo vendedor (para evitar mezclar precios de diferentes sellers de marketplace)
                 else if (offerPrices.length > 1) {
-                  const maxP = Math.max(...offerPrices);
-                  const minP = Math.min(...offerPrices);
-                  if (maxP > minP) {
-                    data.originalPrice = maxP;
+                  const sellers = offers
+                    .map(o => (typeof o.seller === 'object' ? o.seller?.name : o.seller))
+                    .filter(Boolean);
+                  const uniqueSellers = new Set(sellers.map(s => String(s).toLowerCase().trim()));
+
+                  if (uniqueSellers.size <= 1) {
+                    const maxP = Math.max(...offerPrices);
+                    const minP = Math.min(...offerPrices);
+                    if (maxP > minP) {
+                      data.originalPrice = maxP;
+                    }
                   }
                 }
               }
