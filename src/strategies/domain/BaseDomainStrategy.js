@@ -28,21 +28,8 @@ class BaseDomainStrategy {
    */
   async fetchHtml(url, options = {}) {
 
-    // SOLO incluir parámetros que están explícitamente definidos en options
-    const providerConfig = {};
-    
-    if (options.render !== undefined) providerConfig.render = options.render;
-    if (options.premium !== undefined) providerConfig.premium = options.premium;
-    if (options.ultra_premium !== undefined) providerConfig.ultra_premium = options.ultra_premium;
-    if (options.device_type !== undefined) providerConfig.device_type = options.device_type;
-    if (options.wait !== undefined && options.wait > 0) providerConfig.wait = options.wait;
-    if (options.wait_for_selector !== undefined && options.wait_for_selector !== null) {
-      providerConfig.wait_for_selector = options.wait_for_selector;
-    }
-    if (options.headers !== undefined && options.headers !== null) providerConfig.headers = options.headers;
-    if (options.country_code !== undefined) providerConfig.country_code = options.country_code;
-    if (options.session_number !== undefined) providerConfig.session_number = options.session_number;
-    if (options.keep_headers !== undefined) providerConfig.keep_headers = options.keep_headers;
+    // Incluir parámetros configurados (preserva render, wait, cookies, headers, timeouts, etc.)
+    const providerConfig = { ...options };
 
     const domainConfig = {
       providerConfig,
