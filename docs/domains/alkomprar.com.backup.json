@@ -1,0 +1,91 @@
+{
+  "countryCode": "CO",
+  "createdAt": "2026-02-08T12:58:38-05:00",
+  "customRateLimit": null,
+  "domainId": "alkomprar.com",
+  "enabled": true,
+  "last_error_type": null,
+  "last_scrape_error": null,
+  "providerConfig": {},
+  "providerId": "scraperapi",
+  "scraperConfig": {
+    "searchSpecific": {
+      "css": {
+        "image": "",
+        "availability": "",
+        "originalPrice": "",
+        "title": "",
+        "price": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "titlePath": "",
+        "originalPricePath": "",
+        "imagePath": "",
+        "pricePath": ""
+      },
+      "jsonLd": {
+        "originalPricePath": "",
+        "pricePath": ""
+      }
+    },
+    "search": {
+      "containerSelector": "",
+      "priceSelector": "",
+      "titleSelector": "",
+      "urlSelector": "",
+      "imageSelector": ""
+    },
+    "detail": {
+      "css": {
+        "image": "",
+        "availability": "",
+        "originalPrice": "",
+        "title": "",
+        "price": ""
+      },
+      "nextData": {
+        "productPath": "",
+        "titlePath": "",
+        "originalPricePath": "",
+        "imagePath": "",
+        "pricePath": ""
+      },
+      "jsonLd": {
+        "originalPricePath": "",
+        "pricePath": ""
+      },
+      "scripts": [
+        {
+          "key": "currentPrice",
+          "regex": "price:\"(\\d+)\""
+        },
+        {
+          "key": "originalPrice",
+          "regex": "previousPrice:\"(\\d+)\""
+        }
+      ]
+    }
+  },
+  "status_service": "active",
+  "strategyOrder": [
+    "scripts",
+    "jsonLd",
+    "css",
+    "meta",
+    "nextData"
+  ],
+  "subdomains": [],
+  "supportedTypes": [
+    "detail"
+  ],
+  "typeService": [
+    "scraping"
+  ],
+  "updatedAt": "2026-06-02T18:06:39-05:00",
+  "useCss": true,
+  "useJsonLd": true,
+  "useMeta": true,
+  "useNextData": false,
+  "useScripts": true
+}
