@@ -1,0 +1,61 @@
+{
+  "countryCode": "CO",
+  "createdAt": "2026-02-08T10:59:44-05:00",
+  "customRateLimit": null,
+  "domainId": "alkosto.com",
+  "enabled": true,
+  "last_error_type": "api_error",
+  "last_scrape_error": "ScraperAPI error: Request failed with status code 401",
+  "providerConfig": {},
+  "providerId": "scraperapi",
+  "scraperConfig": {
+    "searchSpecific": {
+      "scripts": []
+    },
+    "search": {
+      "scripts": []
+    },
+    "detail": {
+      "scripts": [
+        {
+          "key": "currentPrice",
+          "regex": "[\"']?price[\"']?\\s*:\\s*[\"']?(\\d+)[\"']?"
+        },
+        {
+          "key": "originalPrice",
+          "regex": "[\"']?previousPrice[\"']?\\s*:\\s*[\"']?(\\d+)[\"']?"
+        }
+      ],
+      "css": {
+        "originalPrice": "span.base-price, .before-price__basePrice",
+        "title": ".js-main-title",
+        "price": ".price, .alk-main-price"
+      },
+      "jsonLd": {
+        "originalPricePath": "offers.highPrice",
+        "pricePath": "offers.price"
+      }
+    }
+  },
+  "status_service": "failed",
+  "strategyOrder": [
+    "scripts",
+    "jsonLd",
+    "css",
+    "nextData",
+    "meta"
+  ],
+  "subdomains": [],
+  "supportedTypes": [
+    "detail"
+  ],
+  "typeService": [
+    "scraping"
+  ],
+  "updatedAt": "2026-10-12T17:53:52-05:00",
+  "useCss": true,
+  "useJsonLd": true,
+  "useMeta": false,
+  "useNextData": false,
+  "useScripts": true
+}
