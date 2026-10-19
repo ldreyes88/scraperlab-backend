@@ -24,6 +24,7 @@ const whitelist = [
   'https://scraperlab.com.co',
   'https://www.scraperlab.com.co',
   'http://localhost:5173', // Vite default dev port
+  'http://localhost:3000', // Next.js default dev port
   'http://localhost:3001'  // Frontend port alternativo
 ];
 
