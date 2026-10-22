@@ -1,78 +1,88 @@
 scraperlab-backend/
 ├── src/
 │   ├── config/
-│   │   └── database.js                 (Configuración DynamoDB)
+│   │   └── database.js                 (Configuración DynamoDB: Providers, Domains, Pipelines, Nodes, etc.)
 │   ├── handlers/
 │   │   ├── scraper.js                  (Endpoints de scraping)
 │   │   ├── providers.js                (CRUD de proveedores)
 │   │   ├── domains.js                  (CRUD de dominios/configuraciones)
-│   │   └── process.js                  (Logs y estadísticas)
+│   │   ├── pipelines.js                (CRUD y ejecución de pipelines)
+│   │   ├── nodes.js                    (CRUD del catálogo de nodos independientes)
+│   │   ├── clients.js                  (Gestión de clientes y accesos)
+│   │   ├── users.js                    (Gestión de usuarios)
+│   │   ├── auth.js                     (Autenticación Cognito y API Keys)
+│   │   ├── scheduler.js                (Manejador de triggers automáticos por cron)
+│   │   └── process.js                  (Logs y estadísticas de ejecuciones)
 │   ├── services/
 │   │   ├── ScraperService.js           (Lógica de scraping principal)
+│   │   ├── PipelineService.js          (Orquestador de pipelines, hidratación nodeRef y evaluación de condiciones)
+│   │   ├── AIService.js                (Integración con Gemini AI para matching y prompts)
 │   │   ├── ProviderService.js          (Gestión de proveedores)
 │   │   ├── DomainConfigService.js      (Gestión de configuraciones)
+│   │   ├── ClientService.js            (Lógica de clientes)
+│   │   ├── UserService.js              (Lógica de usuarios)
+│   │   ├── CognitoService.js           (Integración AWS Cognito)
 │   │   └── ProcessService.js           (Gestión de logs)
 │   ├── repositories/
 │   │   ├── ProviderRepository.js       (Acceso a Providers table)
 │   │   ├── DomainRepository.js         (Acceso a Domains table)
-│   │   └── ProcessRepository.js        (Acceso a Process table)
+│   │   ├── PipelineRepository.js       (Acceso a Pipelines table)
+│   │   ├── NodeRepository.js           (Acceso a Nodes table - Catálogo Reutilizable)
+│   │   ├── ClientRepository.js         (Acceso a Clients table)
+│   │   ├── UserRepository.js           (Acceso a Users table)
+│   │   ├── ProcessRepository.js        (Acceso a Process table)
+│   │   └── ProcessDetailRepository.js  (Acceso a ProcessDetail table)
 │   ├── strategies/
 │   │   ├── BaseStrategy.js             (Clase base para providers)
 │   │   ├── ScraperAPIStrategy.js       (Implementación ScraperAPI)
 │   │   ├── OxylabsStrategy.js          (Implementación Oxylabs)
-│   │   ├── StrategyFactory.js          (Factory pattern)
+│   │   ├── ScraperLabsApiStrategy.js   (Implementación directa interna)
+│   │   ├── DirectAPIStrategy.js        (Llamadas directas a endpoints externos)
+│   │   ├── StrategyFactory.js          (Factory pattern para providers)
 │   │   └── domain/
 │   │       ├── BaseDomainStrategy.js   (Clase base para dominios)
+│   │       ├── GenericDynamicStrategy.js (Estrategia dinámica genérica)
 │   │       ├── FalabellaStrategy.js    (Scraping Falabella)
 │   │       ├── ExitoStrategy.js        (Scraping Éxito)
 │   │       └── MercadoLibreStrategy.js (Scraping MercadoLibre)
 │   ├── middleware/
+│   │   ├── auth.js                     (Verificación de token JWT y API Keys por cliente)
 │   │   └── errorHandler.js             (Manejo global de errores)
 │   └── utils/
 │       ├── helpers.js                  (Utilidades generales)
 │       ├── response.js                 (Formateo de respuestas)
-│       └── time.js                     (Utilidades de tiempo)
-├── .cursor/
-│   └── rules/                          (Reglas de Cursor)
-│       ├── project-architecture.mdc    (Arquitectura general)
-│       ├── services-patterns.mdc       (Patrones de servicios)
-│       └── strategies-patterns.mdc     (Patrones de strategies)
+│       ├── time.js                     (Utilidades de tiempo y zona horaria Colombia)
+│       └── currency.js                 (Manejo de monedas y sanitización)
+├── scripts/
+│   ├── createTableNodesTable.js        (Creación de tabla ScraperLab-Nodes en DynamoDB)
+│   ├── createTablePipelinesTable.js    (Creación de tabla ScraperLab-Pipelines en DynamoDB)
+│   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)
+│   ├── seed-oferty-nodes-and-pipeline.js (Semilla de nodos independientes y pipeline de Oferty)
+│   └── seed-pipelines.js               (Semillas de pipelines legados)
 ├── AGENTS.md
-├── server.js                           (Servidor Express local)
+├── server.js                           (Servidor Express local y enrutador principal)
 ├── lambda.js                           (Handler para AWS Lambda)
-├── serverless.yml                      (Configuración Serverless Framework)
+├── serverless.yml                      (Configuración Serverless Framework y permisos IAM)
 ├── package.json
 ├── .env                                (Variables de entorno locales)
 ├── .env.example                        (Ejemplo de variables)
 ├── README.md
-├── scraperlab-arquitecture.txt
-└── scraperlab-structure.txt
+├── scraperlab-backend-arquitecture.txt
+└── scraperlab-backend-structure.txt
 
-Node.js + Express + AWS Lambda + DynamoDB + Cheerio
+Node.js + Express + AWS Lambda + DynamoDB + Cheerio + Gemini AI
 
 ✅ Arquitectura en Capas:
 
-- handlers/      (Controladores HTTP: validación, respuestas)
-- services/      (Lógica de negocio y orquestación)
-- repositories/  (Acceso a datos DynamoDB)
-- strategies/    (Patrón Strategy: providers y dominios)
-- middleware/    (Manejo de errores, CORS, etc)
-- utils/         (Funciones reutilizables)
+- handlers/      (Controladores HTTP: validación, respuestas, REST API)
+- services/      (Lógica de negocio, orquestación de pipelines y evaluación de condiciones)
+- repositories/  (Acceso a datos DynamoDB con AWS SDK v3)
+- strategies/    (Patrón Strategy: providers y dominios de scraping)
+- middleware/    (Autenticación JWT/API Key, manejo de errores, CORS)
+- utils/         (Funciones reutilizables, fechas Colombia, formateo)
 
-✨ Patrón Strategy:
+🧩 Sistema de Pipelines y Nodos Independientes:
 
-Cada dominio (Falabella, Éxito, MercadoLibre) tiene su propia estrategia
-de extracción que hereda de BaseDomainStrategy. Los providers externos
-(ScraperAPI, Oxylabs) también usan el patrón Strategy.
-
-📊 Flujo de Datos:
-
-Handler → Service → Strategy/Repository → Response
-
-🔄 Beneficio:
-
-Separación clara entre:
-- Lógica HTTP (handlers)
-- Lógica de negocio (services)
-- Acceso a datos (repositories)
-- Extracción específica por dominio (strategies)
+- ScraperLab-Nodes:     Catálogo centralizado de bloques de construcción (scraping, AI, APIs, condiciones).
+- ScraperLab-Pipelines: Orquestador de flujo que almacena las relaciones (nodeRef, next, onTrue, onFalse)
+                        permitiendo reutilizar un mismo nodo en múltiples pipelines de clientes (ej: Oferty).

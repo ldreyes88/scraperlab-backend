@@ -1,3 +1,63 @@
-Cliente (scraperlab-web) <---> API Gateway <---> Lambda (Express App) <---> DynamoDB
-                                                                      │
-                                                                      └──> Providers Externos (ScraperAPI, Oxylabs)
+========================================================================================
+                          SCRAPERLAB - ARQUITECTURA GENERAL
+========================================================================================
+
+Cliente (scraperlab-web / Oferty / Clientes Externos)
+         │
+         ▼
+    API Gateway (AWS)
+         │
+         ▼
+ Lambda (Express App en Node.js 22)
+         │
+         ├──> DynamoDB Tables
+         │     ├── ScraperLab-Nodes        (Catálogo de nodos independientes reutilizables)
+         │     ├── ScraperLab-Pipelines    (Relaciones de flujo, transiciones y condiciones)
+         │     ├── ScraperLab-Process      (Historial de ejecuciones y estados)
+         │     ├── ScraperLab-Process-Detail (Tiempos de respuesta y logs por nodo)
+         │     ├── ScraperLab-Domains      (Selectores y configs por marketplace)
+         │     ├── ScraperLab-Providers    (ScraperAPI, Oxylabs, etc.)
+         │     ├── ScraperLab-Clients      (Tenants: Oferty, Falabella, Global)
+         │     └── ScraperLab-Users        (Usuarios y credenciales)
+         │
+         ├──> Scraper Providers Externos (ScraperAPI, Oxylabs, Direct HTTP)
+         │
+         ├──> AI Services (Google Gemini AI via @google/genai)
+         │
+         └──> External APIs (Oferty Backend API, Telegram Bots, Webhooks)
+
+========================================================================================
+                 SISTEMA DE PIPELINES MODULAR (NODOS INDEPENDIENTES)
+========================================================================================
+
+1. CATÁLOGO DE NODOS (ScraperLab-Nodes):
+   Bloques reutilizables disponibles para cualquier pipeline o cliente:
+   - [TRIGGER]      -> Captura inputs iniciales del cliente.
+   - [SCRAPE_SEARCH]-> Búsquedas en marketplaces (Falabella, Éxito, ML, Alkosto).
+   - [SCRAPE_DETAIL]-> Extracción profunda de fichas de producto.
+   - [AI_PROMPT]    -> Matchers inteligentes y catalogación con Gemini.
+   - [CONDITION]    -> Lógica de decisión: (var > 1) -> [onTrue] / [onFalse].
+   - [API_REQUEST]  -> Sincronización con APIs internas (ej: Oferty) o Webhooks.
+
+2. PIPELINES COMO ORQUESTADORES DE RELACIONES (ScraperLab-Pipelines):
+   Los pipelines no reimplementan la lógica, solo componen el flujo:
+
+        [start]
+           │
+           ▼
+     [search_engine]  (ref: 'oferty-marketplaces-search')
+           │
+           ▼
+      [ai_matcher]    (ref: 'oferty-gemini-product-matcher')
+           │
+           ▼
+    [evaluar_matches] (ref: 'oferty-condition-has-matches')
+           │
+     ┌─────┴────────────────┐
+     │ ¿matches > 0?        │
+     ▼                      ▼
+  (TRUE)                 (FALSE)
+     │                      │
+     ▼                      ▼
+[sync_oferty]        [notify_telegram]
+(ref: API Patch)     (ref: Bot Telegram)
