@@ -37,6 +37,7 @@ scraperlab-backend/
 │       ├── project-architecture.mdc    (Arquitectura general)
 │       ├── services-patterns.mdc       (Patrones de servicios)
 │       └── strategies-patterns.mdc     (Patrones de strategies)
+├── AGENTS.md
 ├── server.js                           (Servidor Express local)
 ├── lambda.js                           (Handler para AWS Lambda)
 ├── serverless.yml                      (Configuración Serverless Framework)

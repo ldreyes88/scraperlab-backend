@@ -22,7 +22,8 @@ const TABLES = {
   PROCESS_DETAIL: process.env.PROCESS_DETAIL_TABLE_NAME || 'ScraperLab-Process-Detail',
   USERS: process.env.USERS_TABLE_NAME || 'ScraperLab-Users',
   CLIENTS: process.env.CLIENTS_TABLE_NAME || 'ScraperLab-Clients',
-  PIPELINES: process.env.PIPELINES_TABLE_NAME || 'ScraperLab-Pipelines'
+  PIPELINES: process.env.PIPELINES_TABLE_NAME || 'ScraperLab-Pipelines',
+  NODES: process.env.NODES_TABLE_NAME || 'ScraperLab-Nodes'
 };
 
 module.exports = { dynamoDB, TABLES };

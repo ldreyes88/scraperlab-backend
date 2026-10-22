@@ -2,6 +2,7 @@
 const PipelineRepository = require('../repositories/PipelineRepository');
 const ProcessRepository = require('../repositories/ProcessRepository');
 const ProcessDetailRepository = require('../repositories/ProcessDetailRepository');
+const NodeRepository = require('../repositories/NodeRepository');
 const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
 const { nowColombiaISO } = require('../utils/time');
@@ -75,13 +76,16 @@ class PipelineService {
     let currentNodeId = pipeline.startNodeId || (pipeline.nodes && pipeline.nodes[0]?.id);
     
     while (currentNodeId) {
-      const node = pipeline.nodes.find(n => n.id === currentNodeId);
-      if (!node) {
+      const rawNode = pipeline.nodes.find(n => n.id === currentNodeId);
+      if (!rawNode) {
         console.warn(`Nodo ${currentNodeId} no encontrado en el pipeline`);
         break;
       }
 
-      console.log(`Ejecutando nodo: ${node.id} (${node.type})`);
+      // Hidratar nodo desde el catálogo si viene referenciado (nodeRef)
+      const node = await this.resolveNodeDefinition(rawNode);
+
+      console.log(`Ejecutando nodo: ${node.id} (${node.type})${node.nodeRef ? ` [ref: ${node.nodeRef}]` : ''}`);
       
       const startTime = Date.now();
       try {
@@ -118,11 +122,17 @@ class PipelineService {
           throw new Error(nodeResult.error ? JSON.stringify(nodeResult.error) : `El nodo ${node.id} no devolvió resultados satisfactorios`);
         }
 
-        // Determinar siguiente nodo
+        // Determinar siguiente nodo considerando bifurcaciones, branches y acciones
         if (nodeResult && nodeResult.action === 'STOP') {
           console.log(`[Pipeline] Deteniendo ejecución por solicitud del nodo ${node.id}: ${nodeResult.message || 'Sin detalles'}`);
           currentNodeId = null;
           state.stopped = true;
+        } else if (nodeResult && nodeResult.nextNode !== undefined) {
+          console.log(`[Pipeline] Transición dinámica desde nodo ${node.id} hacia -> ${nodeResult.nextNode || 'FIN'}`);
+          currentNodeId = nodeResult.nextNode;
+        } else if (node.branches && Array.isArray(node.branches)) {
+          const branchedNext = this.evaluateBranches(node.branches, state);
+          currentNodeId = branchedNext !== undefined ? branchedNext : node.next;
         } else {
           currentNodeId = node.next;
         }
@@ -485,58 +495,231 @@ class PipelineService {
     });
   }
   /**
+   * Hidrata un nodo a partir del catálogo independiente si tiene nodeRef
+   */
+  async resolveNodeDefinition(rawNode) {
+    if (!rawNode.nodeRef) {
+      return rawNode;
+    }
+
+    try {
+      const catalogNode = await NodeRepository.getById(rawNode.nodeRef);
+      if (!catalogNode) {
+        throw new Error(`Nodo referenciado '${rawNode.nodeRef}' no existe en el catálogo ScraperLab-Nodes`);
+      }
+
+      return {
+        ...catalogNode,
+        ...rawNode,
+        id: rawNode.id,
+        type: rawNode.type || catalogNode.type,
+        name: rawNode.name || catalogNode.name,
+        category: catalogNode.category || 'general',
+        config: {
+          ...(catalogNode.defaultConfig || {}),
+          ...(rawNode.configOverride || rawNode.config || {})
+        },
+        next: rawNode.next,
+        onError: rawNode.onError,
+        branches: rawNode.branches
+      };
+    } catch (err) {
+      console.error(`[resolveNodeDefinition] Error al resolver nodeRef ${rawNode.nodeRef}:`, err.message);
+      throw err;
+    }
+  }
+
+  /**
    * Manejador de CONDITION
+   * Soporta tanto evaluación de expresiones lógicas directas (ej: "var > 1" -> onTrue/onFalse)
+   * como detección de cambios contra ejecuciones históricas (retrocompatibilidad).
    */
   async handleCondition(node, state, pipeline) {
+    const config = node.config || {};
     const { 
+      expression, 
+      operator, 
+      left, 
+      onTrue, 
+      onFalse,
       compare, 
       onNoChange = 'STOP', 
       onDifference = 'CONTINUE',
       forceEveryHours = null 
-    } = node.config;
-    
-    // 1. Obtener valor actual
-    const currentValue = this.resolveTemplate(compare, state);
-    console.log(`[ConditionNode] Valor actual para ${node.id}:`, currentValue);
+    } = config;
 
-    // 2. Buscar ejecución anterior exitosa de este mismo pipeline con el mismo input
-    // findLastByPipeline busca status='completed', ignorando los 'stopped'
-    const lastProcess = await ProcessRepository.findLastByPipeline(pipeline.pipelineId, state.input);
-    
-    let hasChanged = true; // Por defecto asumimos cambio si no hay historial
-    
-    if (lastProcess && lastProcess.steps) {
-      // Intentar encontrar el mismo nodo en la ejecución anterior para comparar
-      const lastNodeResult = lastProcess.steps.find(s => s.nodeId === node.id);
-      const lastValue = lastNodeResult?.output?.value;
+    // CASO 1: Condición lógica por expresión o comparación directa ("Si var > 1 --> nodo33")
+    if (expression || operator || (left && config.right !== undefined)) {
+      const isMet = this.evaluateConditionRule(config, state);
+      const nextNode = isMet ? onTrue : onFalse;
       
-      console.log(`[ConditionNode] Valor anterior para ${node.id}:`, lastValue);
-      
-      if (lastValue !== undefined && lastValue === currentValue) {
-        hasChanged = false;
-        
-        // Verificar si debemos forzar por tiempo (Heartbeat)
-        if (forceEveryHours) {
-          const lastTime = new Date(lastProcess.timestamp).getTime();
-          const hoursSinceLast = (Date.now() - lastTime) / (1000 * 60 * 60);
-          
-          if (hoursSinceLast >= forceEveryHours) {
-            console.log(`[ConditionNode] Forzando ejecución por tiempo transcurrido: ${hoursSinceLast.toFixed(1)}h >= ${forceEveryHours}h`);
-            hasChanged = true;
+      console.log(`[ConditionNode] '${node.id}' - Evaluación: ${isMet ? 'TRUE' : 'FALSE'} -> Siguiente nodo: ${nextNode || (isMet ? (node.next || 'TERMINAR') : 'TERMINAR')}`);
+
+      return {
+        success: true,
+        conditionResult: isMet,
+        nextNode: nextNode !== undefined ? nextNode : (isMet ? node.next : null),
+        action: nextNode === 'STOP' || (!isMet && onFalse === null) ? 'STOP' : 'CONTINUE',
+        message: `Condición ${isMet ? 'cumplida (true)' : 'no cumplida (false)'}`
+      };
+    }
+
+    // CASO 2: Comparación histórica contra proceso previo (Retrocompatibilidad)
+    if (compare) {
+      const currentValue = this.resolveTemplate(compare, state);
+      console.log(`[ConditionNode] Valor actual para ${node.id}:`, currentValue);
+
+      const lastProcess = await ProcessRepository.findLastByPipeline(pipeline.pipelineId, state.input);
+      let hasChanged = true;
+
+      if (lastProcess && lastProcess.steps) {
+        const lastNodeResult = lastProcess.steps.find(s => s.nodeId === node.id);
+        const lastValue = lastNodeResult?.output?.value;
+
+        console.log(`[ConditionNode] Valor anterior para ${node.id}:`, lastValue);
+
+        if (lastValue !== undefined && lastValue === currentValue) {
+          hasChanged = false;
+
+          if (forceEveryHours) {
+            const lastTime = new Date(lastProcess.timestamp).getTime();
+            const hoursSinceLast = (Date.now() - lastTime) / (1000 * 60 * 60);
+
+            if (hoursSinceLast >= forceEveryHours) {
+              console.log(`[ConditionNode] Forzando ejecución por tiempo transcurrido: ${hoursSinceLast.toFixed(1)}h >= ${forceEveryHours}h`);
+              hasChanged = true;
+            }
           }
         }
       }
+
+      const action = hasChanged ? onDifference : onNoChange;
+      console.log(`[ConditionNode] Resultado: ${hasChanged ? 'CAMBIO (o forzado)' : 'SIN CAMBIO'} -> Acción: ${action}`);
+
+      return { 
+        success: true, 
+        value: currentValue, 
+        action: action,
+        message: action === 'STOP' ? 'Condición cumplida para detener' : 'Condición cumplida para continuar'
+      };
     }
 
-    const action = hasChanged ? onDifference : onNoChange;
-    console.log(`[ConditionNode] Resultado: ${hasChanged ? 'CAMBIO (o forzado)' : 'SIN CAMBIO'} -> Acción: ${action}`);
+    // Por defecto si no hay configuración
+    return { success: true, action: 'CONTINUE' };
+  }
 
-    return { 
-      success: true, 
-      value: currentValue, 
-      action: action,
-      message: action === 'STOP' ? 'Condición cumplida para detener' : 'Condición cumplida para continuar'
+  /**
+   * Evalúa una regla condicional y retorna true o false
+   */
+  evaluateConditionRule(config, state) {
+    const { expression, left, operator, right } = config;
+
+    // Caso A: Expresión directa, ej: "{{nodes.nodo44.var}} > 1"
+    if (expression && typeof expression === 'string') {
+      return this.evaluateExpression(expression, state);
+    }
+
+    // Caso B: Parámetros estructurados (left, operator, right)
+    if (operator) {
+      const resolvedLeft = this.resolveTemplate(left, state);
+      const resolvedRight = this.resolveTemplate(right, state);
+      return this.compareValues(resolvedLeft, operator, resolvedRight);
+    }
+
+    return false;
+  }
+
+  /**
+   * Parsea y evalúa expresiones tipo: "A > B", "A == B", "A <= B", etc.
+   */
+  evaluateExpression(expression, state) {
+    const resolvedExp = this.resolveTemplate(expression, state);
+
+    // Buscar operadores comunes
+    const opRegex = /^(.*?)\s*(>=|<=|===|!==|==|!=|>|<|includes|contains)\s*(.*)$/;
+    const match = String(resolvedExp).trim().match(opRegex);
+
+    if (!match) {
+      const val = this.resolveTemplate(expression, state);
+      return Boolean(val && val !== 'false' && val !== '0');
+    }
+
+    let [, leftStr, op, rightStr] = match;
+    leftStr = leftStr.trim();
+    rightStr = rightStr.trim();
+
+    const parseVal = (v) => {
+      if (v === 'true') return true;
+      if (v === 'false') return false;
+      if (v === 'null') return null;
+      if (v === 'undefined') return undefined;
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        return v.slice(1, -1);
+      }
+      if (!isNaN(Number(v))) return Number(v);
+      return v;
     };
+
+    const leftVal = parseVal(leftStr);
+    const rightVal = parseVal(rightStr);
+
+    return this.compareValues(leftVal, op, rightVal);
+  }
+
+  /**
+   * Compara dos valores de acuerdo con el operador especificado
+   */
+  compareValues(left, operator, right) {
+    const leftNum = Number(left);
+    const rightNum = Number(right);
+    const areNumbers = !isNaN(leftNum) && !isNaN(rightNum) && typeof left !== 'boolean' && typeof right !== 'boolean';
+
+    const valL = areNumbers ? leftNum : left;
+    const valR = areNumbers ? rightNum : right;
+
+    switch (operator) {
+      case '>':
+        return valL > valR;
+      case '<':
+        return valL < valR;
+      case '>=':
+        return valL >= valR;
+      case '<=':
+        return valL <= valR;
+      case '==':
+      case '===':
+      case 'equals':
+        return valL == valR;
+      case '!=':
+      case '!==':
+        return valL != valR;
+      case 'includes':
+      case 'contains':
+        if (Array.isArray(valL)) return valL.includes(valR);
+        return String(valL).includes(String(valR));
+      case 'empty':
+        return valL === null || valL === undefined || valL === '' || (Array.isArray(valL) && valL.length === 0);
+      case 'notEmpty':
+        return valL !== null && valL !== undefined && valL !== '' && (!Array.isArray(valL) || valL.length > 0);
+      default:
+        console.warn(`[Pipeline] Operador condicional desconocido: ${operator}`);
+        return false;
+    }
+  }
+
+  /**
+   * Evalúa ramas condicionales opcionales
+   */
+  evaluateBranches(branches, state) {
+    for (const branch of branches) {
+      if (branch.if) {
+        const matches = this.evaluateExpression(branch.if, state);
+        if (matches) {
+          return branch.then;
+        }
+      }
+    }
+    return undefined;
   }
 }
 

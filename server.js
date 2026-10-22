@@ -14,6 +14,7 @@ const authHandler = require('./src/handlers/auth');
 const usersHandler = require('./src/handlers/users');
 const clientsHandler = require('./src/handlers/clients');
 const pipelinesHandler = require('./src/handlers/pipelines');
+const nodesHandler = require('./src/handlers/nodes');
 
 const app = express();
 
@@ -131,6 +132,13 @@ app.post('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler
 app.put('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.updatePipeline);
 app.delete('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.deletePipeline);
 app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipeline);
+
+// 🧩 Reusable Nodes endpoints (catálogo de nodos independientes)
+app.get('/api/nodes', verifyAuth, nodesHandler.getAllNodes);
+app.get('/api/nodes/:nodeId', verifyAuth, nodesHandler.getNode);
+app.post('/api/nodes', verifyToken, requireRole(['admin']), nodesHandler.createNode);
+app.put('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.updateNode);
+app.delete('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.deleteNode);
 
 app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
 app.get('/api/process/:processId/details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
