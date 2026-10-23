@@ -15,6 +15,8 @@ const usersHandler = require('./src/handlers/users');
 const clientsHandler = require('./src/handlers/clients');
 const pipelinesHandler = require('./src/handlers/pipelines');
 const nodesHandler = require('./src/handlers/nodes');
+const botsHandler = require('./src/handlers/bots');
+const chatHandler = require('./src/handlers/chat');
 
 const app = express();
 
@@ -139,6 +141,21 @@ app.get('/api/nodes/:nodeId', verifyAuth, nodesHandler.getNode);
 app.post('/api/nodes', verifyToken, requireRole(['admin']), nodesHandler.createNode);
 app.put('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.updateNode);
 app.delete('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.deleteNode);
+
+// 🤖 Chat & Bots endpoints (Multi-Tenancy & Web Widget)
+app.post('/api/chat/message', chatHandler.sendMessage);
+app.post('/api/chat/lead', chatHandler.saveLead);
+app.get('/api/chat/sessions/:sessionId', chatHandler.getSession);
+app.get('/api/bots/:botId/public', botsHandler.getPublicBotConfig);
+
+app.get('/api/bots', verifyAuth, botsHandler.getAllBots);
+app.get('/api/bots/:botId', verifyAuth, botsHandler.getBot);
+app.get('/api/bots/:botId/knowledge', verifyAuth, botsHandler.getBotKnowledge);
+app.post('/api/bots', verifyToken, requireRole(['admin']), botsHandler.createBot);
+app.put('/api/bots/:botId', verifyToken, requireRole(['admin']), botsHandler.updateBot);
+app.delete('/api/bots/:botId', verifyToken, requireRole(['admin']), botsHandler.deleteBot);
+app.post('/api/bots/:botId/train', verifyToken, requireRole(['admin']), botsHandler.trainBot);
+app.get('/api/chat/bots/:botId/sessions', verifyToken, requireRole(['admin']), chatHandler.getBotSessions);
 
 app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
 app.get('/api/process/:processId/details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);

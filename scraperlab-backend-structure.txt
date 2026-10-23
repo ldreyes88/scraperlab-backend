@@ -3,6 +3,8 @@ scraperlab-backend/
 │   ├── config/
 │   │   └── database.js                 (Configuración DynamoDB: Providers, Domains, Pipelines, Nodes, etc.)
 │   ├── handlers/
+│   │   ├── bots.js                     (CRUD de bots, entrenamiento de conocimiento y config pública)
+│   │   ├── chat.js                     (Endpoints conversacionales, captura de leads y sesiones)
 │   │   ├── scraper.js                  (Endpoints de scraping)
 │   │   ├── providers.js                (CRUD de proveedores)
 │   │   ├── domains.js                  (CRUD de dominios/configuraciones)
@@ -14,6 +16,8 @@ scraperlab-backend/
 │   │   ├── scheduler.js                (Manejador de triggers automáticos por cron)
 │   │   └── process.js                  (Logs y estadísticas de ejecuciones)
 │   ├── services/
+│   │   ├── AgentOrchestratorService.js (Orquestador multi-agente: Router, RAG, Lead Qualifier, Handoff)
+│   │   ├── BotTrainingService.js       (Pipeline de ingesta de URLs, limpieza y extracción semántica)
 │   │   ├── ScraperService.js           (Lógica de scraping principal)
 │   │   ├── PipelineService.js          (Orquestador de pipelines, hidratación nodeRef y evaluación de condiciones)
 │   │   ├── AIService.js                (Integración con Gemini AI para matching y prompts)
@@ -24,6 +28,9 @@ scraperlab-backend/
 │   │   ├── CognitoService.js           (Integración AWS Cognito)
 │   │   └── ProcessService.js           (Gestión de logs)
 │   ├── repositories/
+│   │   ├── BotRepository.js            (Acceso a Bots table - Multi-Tenancy)
+│   │   ├── BotKnowledgeRepository.js   (Acceso a BotKnowledge table - Base RAG)
+│   │   ├── ChatSessionRepository.js    (Acceso a ChatSessions table - Mensajes y leads)
 │   │   ├── ProviderRepository.js       (Acceso a Providers table)
 │   │   ├── DomainRepository.js         (Acceso a Domains table)
 │   │   ├── PipelineRepository.js       (Acceso a Pipelines table)
@@ -54,6 +61,9 @@ scraperlab-backend/
 │       ├── time.js                     (Utilidades de tiempo y zona horaria Colombia)
 │       └── currency.js                 (Manejo de monedas y sanitización)
 ├── scripts/
+│   ├── createTableBotTables.js         (Creación de tablas ScraperLab-Bots, BotKnowledge, ChatSessions)
+│   ├── seed-bot-builder-pipeline.js    (Semilla del pipeline y nodos de auto-entrenamiento de bots)
+│   ├── seed-scrapy-bot.js              (Semilla del bot oficial Scrapy y conocimiento de ScraperLabs)
 │   ├── createTableNodesTable.js        (Creación de tabla ScraperLab-Nodes en DynamoDB)
 │   ├── createTablePipelinesTable.js    (Creación de tabla ScraperLab-Pipelines en DynamoDB)
 │   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)

@@ -23,7 +23,10 @@ const TABLES = {
   USERS: process.env.USERS_TABLE_NAME || 'ScraperLab-Users',
   CLIENTS: process.env.CLIENTS_TABLE_NAME || 'ScraperLab-Clients',
   PIPELINES: process.env.PIPELINES_TABLE_NAME || 'ScraperLab-Pipelines',
-  NODES: process.env.NODES_TABLE_NAME || 'ScraperLab-Nodes'
+  NODES: process.env.NODES_TABLE_NAME || 'ScraperLab-Nodes',
+  BOTS: process.env.BOTS_TABLE_NAME || 'ScraperLab-Bots',
+  BOT_KNOWLEDGE: process.env.BOT_KNOWLEDGE_TABLE_NAME || 'ScraperLab-BotKnowledge',
+  CHAT_SESSIONS: process.env.CHAT_SESSIONS_TABLE_NAME || 'ScraperLab-ChatSessions'
 };
 
 module.exports = { dynamoDB, TABLES };

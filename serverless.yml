@@ -26,6 +26,9 @@ provider:
     CLIENTS_TABLE_NAME: ScraperLab-Clients
     PIPELINES_TABLE_NAME: ScraperLab-Pipelines
     NODES_TABLE_NAME: ScraperLab-Nodes
+    BOTS_TABLE_NAME: ScraperLab-Bots
+    BOT_KNOWLEDGE_TABLE_NAME: ScraperLab-BotKnowledge
+    CHAT_SESSIONS_TABLE_NAME: ScraperLab-ChatSessions
     NODE_ENV: ${self:custom.stages.${self:provider.stage}.nodeEnv, 'production'}
     STAGE: ${self:provider.stage}
     
@@ -87,6 +90,12 @@ provider:
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PIPELINES_TABLE_NAME}/index/*
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.NODES_TABLE_NAME}
       - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.NODES_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.BOTS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.BOTS_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.BOT_KNOWLEDGE_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.BOT_KNOWLEDGE_TABLE_NAME}/index/*
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CHAT_SESSIONS_TABLE_NAME}
+      - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.CHAT_SESSIONS_TABLE_NAME}/index/*
 
 functions:
   api:
