@@ -71,6 +71,83 @@ exports.getBotKnowledge = async (req, res, next) => {
 };
 
 /**
+ * Crear o agregar un ítem de conocimiento manualmente
+ */
+exports.createKnowledgeItem = async (req, res, next) => {
+  try {
+    const { botId } = req.params;
+    const { title, summary, services, faqs, sourceUrl } = req.body;
+
+    const bot = await BotRepository.getById(botId);
+    if (!bot) {
+      return res.status(404).json({ success: false, message: `Bot ${botId} no encontrado` });
+    }
+
+    const item = await BotKnowledgeRepository.create({
+      botId,
+      sourceUrl: sourceUrl || 'Manual',
+      title: title || 'Conocimiento Manual',
+      summary: summary || '',
+      services: services || [],
+      faqs: faqs || []
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: item,
+      message: 'Conocimiento agregado exitosamente'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Actualizar un ítem de conocimiento específico
+ */
+exports.updateKnowledgeItem = async (req, res, next) => {
+  try {
+    const { knowledgeId } = req.params;
+    const existing = await BotKnowledgeRepository.getById(knowledgeId);
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: `Conocimiento ${knowledgeId} no encontrado` });
+    }
+
+    const updated = await BotKnowledgeRepository.create({
+      ...existing,
+      ...req.body,
+      knowledgeId
+    });
+
+    return res.json({
+      success: true,
+      data: updated,
+      message: 'Conocimiento actualizado exitosamente'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Eliminar un ítem de conocimiento específico
+ */
+exports.deleteKnowledgeItem = async (req, res, next) => {
+  try {
+    const { knowledgeId } = req.params;
+    await BotKnowledgeRepository.delete(knowledgeId);
+
+    return res.json({
+      success: true,
+      message: `Conocimiento ${knowledgeId} eliminado exitosamente`
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Crear un nuevo bot
  */
 exports.createBot = async (req, res, next) => {
