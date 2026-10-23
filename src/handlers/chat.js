@@ -84,6 +84,29 @@ exports.getSession = async (req, res, next) => {
 };
 
 /**
+ * Listar todas las sesiones y leads (Panel de administración global)
+ */
+exports.getAllSessions = async (req, res, next) => {
+  try {
+    const { botId, hasLead, limit = 100 } = req.query;
+
+    const sessions = await ChatSessionRepository.getAllSessions({
+      botId: botId || null,
+      hasLead: hasLead === 'true',
+      limit: parseInt(limit, 10)
+    });
+
+    return res.json({
+      success: true,
+      data: sessions,
+      total: sessions.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Listar sesiones de un bot específico (Panel de administración)
  */
 exports.getBotSessions = async (req, res, next) => {

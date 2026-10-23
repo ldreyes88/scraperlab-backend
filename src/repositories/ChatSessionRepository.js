@@ -117,6 +117,42 @@ class ChatSessionRepository {
   }
 
   /**
+   * Obtener todas las sesiones con filtros opcionales (botId, hasLead)
+   */
+  static async getAllSessions({ botId = null, hasLead = false, limit = 100 } = {}) {
+    try {
+      if (botId && !hasLead) {
+        return await this.getByBotId(botId, limit);
+      }
+
+      const scanResult = await dynamoDB.send(
+        new ScanCommand({
+          TableName: TABLES.CHAT_SESSIONS,
+          Limit: limit
+        })
+      );
+
+      let items = scanResult.Items || [];
+
+      if (botId) {
+        items = items.filter(s => s.botId === botId);
+      }
+
+      if (hasLead) {
+        items = items.filter(s => s.leadData && Object.keys(s.leadData).some(k => !!s.leadData[k]));
+      }
+
+      // Ordenar por fecha de actualización descendente
+      items.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+      return items;
+    } catch (error) {
+      console.error('Error obteniendo todas las sesiones:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Obtener sesiones de un bot
    */
   static async getByBotId(botId, limit = 50) {

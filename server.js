@@ -155,6 +155,7 @@ app.post('/api/bots', verifyToken, requireRole(['admin']), botsHandler.createBot
 app.put('/api/bots/:botId', verifyToken, requireRole(['admin']), botsHandler.updateBot);
 app.delete('/api/bots/:botId', verifyToken, requireRole(['admin']), botsHandler.deleteBot);
 app.post('/api/bots/:botId/train', verifyToken, requireRole(['admin']), botsHandler.trainBot);
+app.get('/api/chat/sessions', verifyToken, requireRole(['admin']), chatHandler.getAllSessions);
 app.get('/api/chat/bots/:botId/sessions', verifyToken, requireRole(['admin']), chatHandler.getBotSessions);
 
 app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
