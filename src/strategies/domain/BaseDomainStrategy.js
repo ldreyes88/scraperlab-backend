@@ -80,7 +80,8 @@ class BaseDomainStrategy {
     const specificPatterns = [
       'nav-header-captcha', 'challenge-form', 'robot_check', 
       'cf-challenge', 'g-recaptcha', 'captcha-delivery',
-      'protection by cloudflare', 'access denied'
+      'protection by cloudflare', 'access denied',
+      'suspicious-traffic-frontend', 'account-verification', 'gz/account-verification'
     ];
 
     const lowerHtml = cleanHtml.toLowerCase();

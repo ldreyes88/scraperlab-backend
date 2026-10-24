@@ -109,16 +109,17 @@ class ScraperLabsApiStrategy extends BaseStrategy {
 
       page = await browser.newPage();
 
-      // Configurar User-Agent realista
-      const defaultUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
+      // Configurar User-Agent y Headers consistentes según el entorno (Lambda Linux vs Local)
+      const defaultUserAgent = isLambda
+        ? 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36'
+        : 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
       await page.setUserAgent(providerConfig.userAgent || defaultUserAgent);
 
-      // Inyectar headers anti-detección y headers personalizados
       const defaultHeaders = {
         'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
         'sec-ch-ua': '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
         'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
+        'sec-ch-ua-platform': isLambda ? '"Linux"' : '"macOS"',
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
@@ -159,15 +160,15 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       // Navegar a la URL objetivo
       await page.goto(url, { waitUntil, timeout });
 
-      // Resolución de retos anti-bot / PoW interactivos (SOLO cuando se configure 'antibot: true' en el dominio)
-      const isAntiBotEnabled = providerConfig.antibot === true || providerConfig.solve_challenge === true;
-      if (isAntiBotEnabled) {
+      // Detección y resolución de retos interactivos anti-bot / PoW (activo por defecto salvo que se defina antibot: false)
+      const isAntiBotDisabled = providerConfig.antibot === false;
+      if (!isAntiBotDisabled) {
         try {
           const challengeSelector = providerConfig.challenge_selector || '#continue-button';
           const continueBtn = await page.$(challengeSelector);
           if (continueBtn) {
-            console.log(`[ScraperLabsApi] [AntiBot] Reto interactivo detectado (${challengeSelector}). Esperando resolución...`);
-            const challengeTimeout = parseInt(providerConfig.challenge_timeout || 15000, 10);
+            console.log(`[ScraperLabsApi] [AntiBot] Reto interactivo detectado (${challengeSelector}). Esperando resolución de PoW...`);
+            const challengeTimeout = parseInt(providerConfig.challenge_timeout || 25000, 10);
             await page.waitForFunction((sel) => {
               const btn = document.querySelector(sel);
               return btn && !btn.disabled;
@@ -175,12 +176,18 @@ class ScraperLabsApiStrategy extends BaseStrategy {
 
             console.log(`[ScraperLabsApi] [AntiBot] Reto resuelto. Continuando navegación...`);
             await Promise.all([
-              page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {}),
+              page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => {}),
               page.click(challengeSelector)
             ]);
 
-            // Espera posterior al reto para hidratación del DOM
-            const postChallengeWait = parseInt(providerConfig.post_challenge_wait || 2000, 10);
+            // Intentar esperar a que aparezca un elemento representativo de la página del producto
+            try {
+              await page.waitForSelector('.ui-pdp-title, h1, .andes-money-amount, meta[property="og:title"]', { timeout: 8000 });
+            } catch (waitErr) {
+              // Si no aparece de inmediato, aplicar la espera de hidratación
+            }
+
+            const postChallengeWait = parseInt(providerConfig.post_challenge_wait || 2500, 10);
             await new Promise((resolve) => setTimeout(resolve, postChallengeWait));
           }
         } catch (challengeErr) {
