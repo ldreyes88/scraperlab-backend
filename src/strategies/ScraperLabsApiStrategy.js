@@ -159,25 +159,33 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       // Navegar a la URL objetivo
       await page.goto(url, { waitUntil, timeout });
 
-      // Detección automática de retos anti-bot / PoW interactivos (ej: MercadoLibre #continue-button)
-      try {
-        const continueBtn = await page.$('#continue-button');
-        if (continueBtn) {
-          console.log('[ScraperLabsApi] Reto interactivo (#continue-button) detectado. Esperando resolución de PoW...');
-          await page.waitForFunction(() => {
-            const btn = document.getElementById('continue-button');
-            return btn && !btn.disabled;
-          }, { timeout: 15000 });
-          console.log('[ScraperLabsApi] Reto resuelto con éxito. Continuando navegación...');
-          await Promise.all([
-            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {}),
-            page.click('#continue-button')
-          ]);
-          // Espera breve tras reto para permitir hidratación del DOM
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Resolución de retos anti-bot / PoW interactivos (SOLO cuando se configure 'antibot: true' en el dominio)
+      const isAntiBotEnabled = providerConfig.antibot === true || providerConfig.solve_challenge === true;
+      if (isAntiBotEnabled) {
+        try {
+          const challengeSelector = providerConfig.challenge_selector || '#continue-button';
+          const continueBtn = await page.$(challengeSelector);
+          if (continueBtn) {
+            console.log(`[ScraperLabsApi] [AntiBot] Reto interactivo detectado (${challengeSelector}). Esperando resolución...`);
+            const challengeTimeout = parseInt(providerConfig.challenge_timeout || 15000, 10);
+            await page.waitForFunction((sel) => {
+              const btn = document.querySelector(sel);
+              return btn && !btn.disabled;
+            }, { timeout: challengeTimeout }, challengeSelector);
+
+            console.log(`[ScraperLabsApi] [AntiBot] Reto resuelto. Continuando navegación...`);
+            await Promise.all([
+              page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {}),
+              page.click(challengeSelector)
+            ]);
+
+            // Espera posterior al reto para hidratación del DOM
+            const postChallengeWait = parseInt(providerConfig.post_challenge_wait || 2000, 10);
+            await new Promise((resolve) => setTimeout(resolve, postChallengeWait));
+          }
+        } catch (challengeErr) {
+          console.warn('[ScraperLabsApi] [AntiBot] Verificación de reto finalizada:', challengeErr.message);
         }
-      } catch (challengeErr) {
-        console.warn('[ScraperLabsApi] Verificación de reto finalizada:', challengeErr.message);
       }
 
       // Esperar selector específico si está configurado

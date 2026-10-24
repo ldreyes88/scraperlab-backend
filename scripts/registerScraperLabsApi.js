@@ -23,6 +23,13 @@ async function updateProviders() {
       concurrentRequests: 10
     },
     configSchema: {
+      antibot: {
+        type: 'boolean',
+        default: false,
+        label: 'Modo Anti-Bot & Solver de Retos',
+        description: 'Activa la detección y resolución de retos interactivos de verificación / Proof-of-Work (ej: MercadoLibre)',
+        required: false
+      },
       wait: {
         type: 'number',
         default: 1000,
