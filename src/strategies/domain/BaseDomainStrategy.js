@@ -328,8 +328,7 @@ extractFromScripts($, patterns = []) {
   const data = {};
   const defaultPatterns = [
     { key: 'currentPrice', regex: /["']?price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ },
-    { key: 'originalPrice', regex: /["']?(?:original|list|previous)Price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ },
-    { key: 'title', regex: /["']?name["']?\s*:\s*["']?([^"']+)["']?/ }
+    { key: 'originalPrice', regex: /["']?(?:original|list|previous)Price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ }
   ];
 
   // Convertir strings de regex a objetos RegExp si vienen de la DB
@@ -353,6 +352,13 @@ extractFromScripts($, patterns = []) {
       const match = content.match(p.regex);
       if (match) {
         let value = match[1];
+        // Validar títulos sospechosos o cadenas vacías/rotas
+        if (p.key === 'title') {
+          const cleanVal = (value || '').trim();
+          if (!cleanVal || cleanVal === 'null' || cleanVal === 'undefined' || cleanVal.endsWith(',') || cleanVal.startsWith('{') || cleanVal.length < 3) {
+            continue;
+          }
+        }
         // Aplicar divisor si existe (útil para precios en centavos como Shopify/VTEX)
         if (p.divisor && !isNaN(value)) {
           value = parseFloat(value) / p.divisor;
@@ -370,6 +376,13 @@ extractFromScripts($, patterns = []) {
       const match = content.match(p.regex);
       if (match) {
         let value = match[1];
+        // Validar títulos sospechosos o cadenas vacías/rotas
+        if (p.key === 'title') {
+          const cleanVal = (value || '').trim();
+          if (!cleanVal || cleanVal === 'null' || cleanVal === 'undefined' || cleanVal.endsWith(',') || cleanVal.startsWith('{') || cleanVal.length < 3) {
+            continue;
+          }
+        }
         // Aplicar divisor si existe en el patrón default (aunque por ahora no hay)
         if (p.divisor && !isNaN(value)) {
           value = parseFloat(value) / p.divisor;
@@ -443,10 +456,18 @@ extractFromScripts($, patterns = []) {
       $(imgSelector).each((i, el) => {
         if (data.image) return;
         const imgEl = $(el);
-        data.image = imgEl.attr('src') || 
+        let imgSrc = imgEl.attr('src') || 
                      imgEl.attr('data-src') ||
                      imgEl.attr('data-original') ||
-                     imgEl.attr('data-lazy-src');
+                     imgEl.attr('data-lazy-src') ||
+                     imgEl.attr('content');
+        if (imgSrc) {
+          // Normalizar URLs que puedan tener duplicación de dominio/protocolo (ej: Ktronix itemprop="image")
+          if (imgSrc.includes('https://') && imgSrc.indexOf('https://') !== imgSrc.lastIndexOf('https://')) {
+            imgSrc = imgSrc.slice(imgSrc.lastIndexOf('https://'));
+          }
+          data.image = imgSrc;
+        }
       });
     }
 

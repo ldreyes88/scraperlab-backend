@@ -68,6 +68,7 @@ scraperlab-backend/
 │   ├── createTablePipelinesTable.js    (Creación de tabla ScraperLab-Pipelines en DynamoDB)
 │   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)
 │   ├── seed-oferty-nodes-and-pipeline.js (Semilla de nodos independientes y pipeline de Oferty)
+│   ├── seed-domains-ktronix-ml.js      (Sincronización de configuraciones de scraping ScraperLabsApi para Ktronix y MercadoLibre)
 │   └── seed-pipelines.js               (Semillas de pipelines legados)
 ├── AGENTS.md
 ├── server.js                           (Servidor Express local y enrutador principal)

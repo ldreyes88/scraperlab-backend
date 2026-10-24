@@ -83,12 +83,14 @@ class ScraperLabsApiStrategy extends BaseStrategy {
     console.log(`[ScraperLabsApi] Navegando a: ${url} (Entorno: ${isLambda ? 'AWS Lambda' : 'Local'})`);
 
     const launchArgs = isLambda
-      ? chromium.args
+      ? [...chromium.args, '--disable-blink-features=AutomationControlled']
       : [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-gpu'
+          '--disable-gpu',
+          '--disable-blink-features=AutomationControlled',
+          '--window-size=1920,1080'
         ];
 
     let browser = null;
@@ -108,13 +110,28 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       page = await browser.newPage();
 
       // Configurar User-Agent realista
-      const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36';
+      const defaultUserAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36';
       await page.setUserAgent(providerConfig.userAgent || defaultUserAgent);
 
-      // Inyectar headers si están definidos
-      if (providerConfig.headers && Object.keys(providerConfig.headers).length > 0) {
-        await page.setExtraHTTPHeaders(providerConfig.headers);
-      }
+      // Inyectar headers anti-detección y headers personalizados
+      const defaultHeaders = {
+        'Accept-Language': 'es-419,es;q=0.9,en;q=0.8',
+        'sec-ch-ua': '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1'
+      };
+      await page.setExtraHTTPHeaders({ ...defaultHeaders, ...(providerConfig.headers || {}) });
+
+      // Evasión de WebDriver y entorno de automatización
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        window.chrome = { runtime: {} };
+      });
 
       // Inyectar cookies de sesión si están definidas (útil para saltarse reCAPTCHA con sesión previa)
       if (Array.isArray(providerConfig.cookies) && providerConfig.cookies.length > 0) {
@@ -141,6 +158,27 @@ class ScraperLabsApiStrategy extends BaseStrategy {
 
       // Navegar a la URL objetivo
       await page.goto(url, { waitUntil, timeout });
+
+      // Detección automática de retos anti-bot / PoW interactivos (ej: MercadoLibre #continue-button)
+      try {
+        const continueBtn = await page.$('#continue-button');
+        if (continueBtn) {
+          console.log('[ScraperLabsApi] Reto interactivo (#continue-button) detectado. Esperando resolución de PoW...');
+          await page.waitForFunction(() => {
+            const btn = document.getElementById('continue-button');
+            return btn && !btn.disabled;
+          }, { timeout: 15000 });
+          console.log('[ScraperLabsApi] Reto resuelto con éxito. Continuando navegación...');
+          await Promise.all([
+            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {}),
+            page.click('#continue-button')
+          ]);
+          // Espera breve tras reto para permitir hidratación del DOM
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        }
+      } catch (challengeErr) {
+        console.warn('[ScraperLabsApi] Verificación de reto finalizada:', challengeErr.message);
+      }
 
       // Esperar selector específico si está configurado
       if (providerConfig.wait_for_selector) {

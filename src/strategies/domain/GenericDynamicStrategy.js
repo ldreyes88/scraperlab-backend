@@ -161,11 +161,31 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
           $('[itemprop="price"]').attr('content');
       }
 
-      // Fallback universal para título siempre que falte
+      // Fallback universal para título siempre que falte o sea inválido
+      if (extractedData.title && (extractedData.title === 'null,' || extractedData.title === 'null' || extractedData.title === 'undefined')) {
+        delete extractedData.title;
+      }
+
       extractedData.title = extractedData.title || 
+        $('h1.ui-pdp-title').first().text().trim() ||
+        $('h1').first().text().trim() ||
         $('meta[property="og:title"]').attr('content') || 
         $('meta[name="twitter:title"]').attr('content') ||
         $('title').text().trim();
+
+      // Limpieza de título con sufijo de precio (ej: "Apple iPhone 18 Pro Max - $ 5.569.900")
+      if (extractedData.title && extractedData.title.includes(' - $')) {
+        const parts = extractedData.title.split(' - $');
+        extractedData.title = parts[0].trim();
+        if ((!extractedData.currentPrice || this.cleanPrice(extractedData.currentPrice) === 0) && parts[1]) {
+          extractedData.currentPrice = parts[1].replace(/\D/g, '');
+        }
+      }
+
+      // Limpieza de duplicación de protocolo en imágenes
+      if (extractedData.image && extractedData.image.includes('https://') && extractedData.image.indexOf('https://') !== extractedData.image.lastIndexOf('https://')) {
+        extractedData.image = extractedData.image.slice(extractedData.image.lastIndexOf('https://'));
+      }
 
       // Formatear respuesta según tipo
       if (scrapeType === 'searchSpecific') {
