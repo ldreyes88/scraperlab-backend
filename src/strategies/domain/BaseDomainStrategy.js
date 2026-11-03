@@ -328,8 +328,8 @@ class BaseDomainStrategy {
 extractFromScripts($, patterns = []) {
   const data = {};
   const defaultPatterns = [
-    { key: 'currentPrice', regex: /["']?price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ },
-    { key: 'originalPrice', regex: /["']?(?:original|list|previous)Price["']?\s*:\s*["']?(\d+(?:\.\d+)?)/ }
+    { key: 'currentPrice', regex: /(?:^|[^\w-])["']price["']\s*:\s*["']?(\d+(?:\.\d+)?)/ },
+    { key: 'originalPrice', regex: /(?:^|[^\w-])["'](?:original|list|previous)[_-]?price["']\s*:\s*["']?(\d+(?:\.\d+)?)/i }
   ];
 
   // Convertir strings de regex a objetos RegExp si vienen de la DB
@@ -415,7 +415,13 @@ extractFromScripts($, patterns = []) {
       if (!selector) return null;
       let text = '';
       $(selector).each((i, el) => {
+        if (text) return;
         const item = $(el);
+
+        // Evitar elementos dentro de carruseles de recomendaciones o productos relacionados
+        if (item.closest('.ui-pdp-recommendations, .ui-recommendations, .poly-card, .andes-carousel, aside.ui-pdp-aside--recommendations').length > 0) {
+          return;
+        }
         
         // 1. Intentar extraer de atributos comunes de precio si existen
         const attrVal = item.attr('data-event-price') || 

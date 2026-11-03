@@ -64,6 +64,7 @@ scraperlab-backend/
 │   ├── createTableBotTables.js         (Creación de tablas ScraperLab-Bots, BotKnowledge, ChatSessions)
 │   ├── seed-bot-builder-pipeline.js    (Semilla del pipeline y nodos de auto-entrenamiento de bots)
 │   ├── seed-scrapy-bot.js              (Semilla del bot oficial Scrapy y conocimiento de ScraperLabs)
+│   ├── seed-oferty-bot.js              (Semilla del bot oficial Oferty y base de conocimiento de productos/tiendas)
 │   ├── createTableNodesTable.js        (Creación de tabla ScraperLab-Nodes en DynamoDB)
 │   ├── createTablePipelinesTable.js    (Creación de tabla ScraperLab-Pipelines en DynamoDB)
 │   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)

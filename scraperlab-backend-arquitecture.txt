@@ -64,3 +64,25 @@ Cliente (scraperlab-web / Oferty / Clientes Externos)
      ▼                      ▼
 [sync_oferty]        [notify_telegram]
 (ref: API Patch)     (ref: Bot Telegram)
+
+================================================================================
+ARQUITECTURA DE AGENTES CONVERSACIONALES Y BOTS MULTI-TENANT (OFERTY & SCRAPERLABS)
+================================================================================
+
+[oferty-web (Web Pública)]      [oferty-web (/admin)]
+          │                              │
+          ▼                              ▼
+ [OfertyChatWidget]             [BLOQUEO TOTAL: NULL]
+          │
+          ▼ (POST /api/chat)
+ [oferty-backend / Proxy]
+          │
+          ▼ (POST /api/chat/message -> botId: "oferty")
+ [ScraperLabs AgentOrchestratorService]
+          │
+          ├──> [Guardrail & Triage Agent]
+          │     ├── Consulta Capciosa / Fuera de tema / Jailbreak ────> [RESTRICTED_QUERY: Bloqueo Inmediato]
+          │     └── Consulta de Producto o Comparador Oferty ───────> [Knowledge Agent / RAG con Tiendas Colombia]
+          │
+          └──> DynamoDB (ScraperLab-Bots, ScraperLab-BotKnowledge, ScraperLab-ChatSessions)
+

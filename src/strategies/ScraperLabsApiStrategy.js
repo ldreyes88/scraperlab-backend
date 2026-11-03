@@ -93,6 +93,24 @@ class ScraperLabsApiStrategy extends BaseStrategy {
           '--window-size=1920,1080'
         ];
 
+    // Soporte opcional de proxy (residencial/rotativo) para dominios que bloquean IPs de AWS Datacenter
+    const proxyUrl = providerConfig.proxy || process.env.SCRAPERLABS_PROXY || null;
+    let proxyAuth = null;
+    if (proxyUrl) {
+      try {
+        const parsed = new URL(proxyUrl);
+        launchArgs.push(`--proxy-server=${parsed.protocol}//${parsed.host}`);
+        if (parsed.username || parsed.password) {
+          proxyAuth = {
+            username: decodeURIComponent(parsed.username),
+            password: decodeURIComponent(parsed.password)
+          };
+        }
+      } catch (err) {
+        launchArgs.push(`--proxy-server=${proxyUrl}`);
+      }
+    }
+
     let browser = null;
     let page = null;
 
@@ -108,6 +126,11 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       });
 
       page = await browser.newPage();
+
+      // Autenticación de proxy si aplica
+      if (proxyAuth) {
+        await page.authenticate(proxyAuth);
+      }
 
       // Configurar User-Agent y Headers consistentes según el entorno (Lambda Linux vs Local)
       const defaultUserAgent = isLambda
