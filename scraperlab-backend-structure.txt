@@ -70,7 +70,11 @@ scraperlab-backend/
 │   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)
 │   ├── seed-oferty-nodes-and-pipeline.js (Semilla de nodos independientes y pipeline de Oferty)
 │   ├── seed-domains-ktronix-ml.js      (Sincronización de configuraciones de scraping ScraperLabsApi para Ktronix y MercadoLibre)
+│   ├── migrate-domains-scraperlabsapi.js (Sincronización a ScraperLabsApi para mac-center, ishop y movistar)
 │   └── seed-pipelines.js               (Semillas de pipelines legados)
+├── docs/
+│   ├── agente-oferty-configuracion.md  (Documentación del agente oficial Oferty y directivas de seguridad)
+│   └── oferty-integration/             (Paquete de integración para oferty-backend y oferty-web)
 ├── AGENTS.md
 ├── server.js                           (Servidor Express local y enrutador principal)
 ├── lambda.js                           (Handler para AWS Lambda)

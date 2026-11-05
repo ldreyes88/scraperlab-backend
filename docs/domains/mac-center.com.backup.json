@@ -1,0 +1,59 @@
+{
+  "domainId": "mac-center.com",
+  "providerId": "scraperapi",
+  "countryCode": "CO",
+  "enabled": true,
+  "typeService": [
+    "scraping"
+  ],
+  "supportedTypes": [
+    "detail"
+  ],
+  "useJsonLd": true,
+  "useCss": true,
+  "useScripts": true,
+  "useMeta": false,
+  "useNextData": false,
+  "strategyOrder": [
+    "scripts",
+    "jsonLd",
+    "css"
+  ],
+  "scraperConfig": {
+    "detail": {
+      "css": {
+        "title": "h1.product-title, h1.product__title, h1",
+        "price": ".price .price-item--regular, .price-item--sale, .product-price, span.price",
+        "originalPrice": ".price-item--regular, s.price-item--regular, .product-price--compare",
+        "image": ".product__media img, .product-gallery img, img[src*='/products/']",
+        "availability": ""
+      },
+      "jsonLd": {
+        "pricePath": "offers.price",
+        "originalPricePath": "offers.highPrice"
+      },
+      "scripts": [
+        {
+          "key": "currentPrice",
+          "regex": "\"price\":\\s*(\\d+)(?:\\.\\d+)?",
+          "divisor": 100
+        },
+        {
+          "key": "originalPrice",
+          "regex": "\"compare_at_price\":\\s*(\\d+)(?:\\.\\d+)?",
+          "divisor": 100
+        },
+        {
+          "key": "title",
+          "regex": "\"product_name\":\\s*\"([^\"]+)\""
+        }
+      ]
+    }
+  },
+  "providerConfig": {
+    "detail": {
+      "render": true,
+      "device_type": "desktop"
+    }
+  }
+}
