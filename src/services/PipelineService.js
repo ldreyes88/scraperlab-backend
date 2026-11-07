@@ -185,8 +185,13 @@ class PipelineService {
       } else if (state.stopped) {
         finalStatus = 'stopped';
       }
+
+      // Extraer output final si un nodo lo generó (ej: Hunter scraping o Save Result)
+      const finalOutput = state.output || 
+        state.results.find(r => r.type === 'HUNTER_SCRAPING' || r.type === 'LIVE_HUNTER_SEARCH')?.output || 
+        null;
       
-      await ProcessRepository.updateStatus(processId, finalStatus);
+      await ProcessRepository.updateStatus(processId, finalStatus, finalOutput);
     }
 
     state.endTime = nowColombiaISO();
@@ -222,6 +227,10 @@ class PipelineService {
         break;
       case 'CONDITION':
         output = await this.handleCondition(node, state, pipeline);
+        break;
+      case 'HUNTER_SCRAPING':
+      case 'LIVE_HUNTER_SEARCH':
+        output = await this.handleHunterScraping(node, state);
         break;
       default:
         throw new Error(`Tipo de nodo no soportado: ${node.type}`);
@@ -720,6 +729,242 @@ class PipelineService {
       }
     }
     return undefined;
+  }
+
+  /**
+   * Manejador de HUNTER_SCRAPING / LIVE_HUNTER_SEARCH
+   * Busca simultáneamente en tiempo real en los comercios seleccionados (Alkosto, Éxito, Mercado Libre, etc.)
+   * Extrae la posición #1 (Top 1) de cada tienda y clasifica la intención con Gemini.
+   */
+  async handleHunterScraping(node, state) {
+    const query = state.input?.query || state.input?.name || state.input?.product_family_name || '';
+    const rawMarkets = state.input?.marketplaces || node.config?.marketplaces || ['exito', 'alkosto', 'mercadolibre'];
+    const isGift = Boolean(state.input?.isGift);
+
+    const targetMarkets = Array.isArray(rawMarkets) 
+      ? rawMarkets 
+      : String(rawMarkets).split(',').map(m => m.trim().toLowerCase());
+
+    console.log(`[Hunter] Iniciando búsqueda multi-sitio en paralelo para: "${query}"`, targetMarkets);
+
+    const MARKETPLACE_CONFIGS = {
+      'alkosto': {
+        domainId: 'alkosto.com',
+        name: 'Alkosto',
+        searchUrl: (q) => `https://www.alkosto.com/search?text=${encodeURIComponent(q)}`
+      },
+      'exito': {
+        domainId: 'exito.com',
+        name: 'Éxito',
+        searchUrl: (q) => `https://www.exito.com/s?q=${encodeURIComponent(q)}`
+      },
+      'mercadolibre': {
+        domainId: 'mercadolibre.com.co',
+        name: 'Mercado Libre',
+        searchUrl: (q) => `https://listado.mercadolibre.com.co/${encodeURIComponent(q)}`
+      },
+      'falabella': {
+        domainId: 'falabella.com.co',
+        name: 'Falabella',
+        searchUrl: (q) => `https://www.falabella.com.co/falabella-co/search?Ntt=${encodeURIComponent(q)}`
+      },
+      'ktronix': {
+        domainId: 'ktronix.com',
+        name: 'Ktronix',
+        searchUrl: (q) => `https://www.ktronix.com/search?text=${encodeURIComponent(q)}`
+      }
+    };
+
+    const toSafeNumber = (val, fallback = 0) => {
+      const n = Number(val);
+      return Number.isFinite(n) ? n : fallback;
+    };
+
+    // Scraping en paralelo para todos los comercios seleccionados
+    const promises = targetMarkets.map(async (marketKey) => {
+      const key = marketKey.toLowerCase().replace(/[^a-z]/g, '');
+      console.log(`[Hunter] Ejecutando búsqueda live para ${key} con término "${query}"...`);
+
+      // 1. ÉXITO (Conector nativo VTEX ultrarrápido < 150ms)
+      if (key === 'exito') {
+        try {
+          const exitoUrl = `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`;
+          const res = await fetch(exitoUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+            }
+          });
+          if (res.ok) {
+            const items = await res.json();
+            if (Array.isArray(items) && items.length > 0) {
+              const top1 = items[0];
+              const price = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
+              const origPrice = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
+              const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
+              return {
+                marketplace: 'Éxito',
+                domainId: 'exito.com',
+                name: top1.productName || query,
+                currentPrice: price,
+                originalPrice: origPrice,
+                discount,
+                url: top1.link || `https://www.exito.com/${top1.linkText}/p`,
+                image: top1.items?.[0]?.images?.[0]?.imageUrl || null,
+                position: 1,
+                success: true
+              };
+            }
+          }
+        } catch (err) {
+          console.warn('[Hunter] Error en conector directo de Éxito:', err.message);
+        }
+      }
+
+      // 2. ALKOSTO / KTRONIX (Conector oficial Algolia Search < 100ms)
+      if (key === 'alkosto' || key === 'ktronix') {
+        try {
+          const appId = 'QX5IPS1B1Q';
+          const apiKey = 'ODNiNzFhOTg5MWEyNWYxZGIyMmMyODFjYjNkMWU3NjVhNjUzYzgzZWUwMjkwODI3NmM4MDliNTY4OTEzODc5NCZmaWx0ZXJzPWF2YWlsYWJsZUJ1eUJ1dE5vdFZpc2libGVfYm9vbGVhbiUzQWZhbHNl';
+          const indexName = key === 'ktronix' ? 'ktronixIndexAlgoliaPRD' : 'alkostoIndexAlgoliaPRD';
+          const algoliaUrl = `https://${appId}-dsn.algolia.net/1/indexes/${indexName}/query`;
+
+          const res = await fetch(algoliaUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Algolia-Application-Id': appId,
+              'X-Algolia-API-Key': apiKey
+            },
+            body: JSON.stringify({ query, hitsPerPage: 3 })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data.hits) && data.hits.length > 0) {
+              const top1 = data.hits[0];
+              const price = toSafeNumber(top1.pricevalue_cop_double || top1.lowestprice_double || top1.discountprice_double, 0);
+              const origPrice = toSafeNumber(top1.baseprice_cop_string, price);
+              const discount = toSafeNumber(top1.percentagediscount_string, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
+              const host = key === 'ktronix' ? 'https://www.ktronix.com' : 'https://www.alkosto.com';
+              const pUrl = top1.url_es_string ? `${host}${top1.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
+              const pImg = top1['img-750wx750h_string'] || top1['img-310wx310h_string'] || top1['img-1400wx1400h_string'] || null;
+
+              return {
+                marketplace: key === 'ktronix' ? 'Ktronix' : 'Alkosto',
+                domainId: `${key}.com`,
+                name: top1.name_text_es || query,
+                currentPrice: price,
+                originalPrice: origPrice,
+                discount,
+                url: pUrl,
+                image: pImg,
+                position: 1,
+                success: true
+              };
+            }
+          }
+        } catch (err) {
+          console.warn(`[Hunter] Error en conector directo de ${key}:`, err.message);
+        }
+      }
+
+      // 3. MERCADO LIBRE / FALABELLA / OTROS (ScraperService Fallback)
+      const config = MARKETPLACE_CONFIGS[key];
+      if (!config) return null;
+
+      const searchUrl = config.searchUrl(query);
+      console.log(`[Hunter] Buscando vía ScraperService en ${config.name}: ${searchUrl}`);
+
+      try {
+        const scrapeRes = await ScraperService.scrapeUrl(searchUrl, true, 'search');
+        if (scrapeRes && scrapeRes.success && Array.isArray(scrapeRes.data?.results) && scrapeRes.data.results.length > 0) {
+          // Tomar la primera posición (Top 1)
+          const top1 = scrapeRes.data.results[0];
+          const price = toSafeNumber(top1.currentPrice || top1.price, 0);
+          const origPrice = toSafeNumber(top1.originalPrice || top1.price, price);
+          const discount = toSafeNumber(top1.discount, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
+
+          return {
+            marketplace: config.name,
+            domainId: config.domainId,
+            name: top1.title || top1.name || query,
+            currentPrice: price,
+            originalPrice: origPrice,
+            discount,
+            url: top1.url || top1.productUrl || searchUrl,
+            image: top1.image || top1.imageUrl || null,
+            position: 1,
+            success: true
+          };
+        }
+        return null;
+      } catch (err) {
+        console.warn(`[Hunter] Error buscando en ${config.name}:`, err.message);
+        return null;
+      }
+    });
+
+    const settled = await Promise.all(promises);
+    const marketplacesFound = settled.filter(Boolean);
+
+    // Clasificación con IA (Gemini)
+    let classification = {
+      isTechOrElectro: true,
+      category: 'Tecnologia',
+      name: query
+    };
+
+    try {
+      const prompt = `Analiza la siguiente búsqueda de productos en comercio electrónico colombiano:
+Búsqueda: "${query}"
+Es modo regalo: ${isGift ? 'Sí' : 'No'}
+Resultados encontrados (Top 1 por tienda):
+${JSON.stringify(marketplacesFound, null, 2)}
+
+Tu misión:
+1. Clasifica si el producto pertenece a la vertical de "Tecnología" (celulares, computadores, tablets, smartwatches, audífonos, accesorios tech) o "Electrodomésticos" (televisores, neveras, lavadoras, aires, electrodomésticos de cocina).
+2. Si pertenece a Tecnología o Electrodomésticos, marca "isTechOrElectro": true y especifica "category": "Tecnologia" o "Electrodomesticos".
+3. Si pertenece a otra categoría (moda, ropa, calzado, perfumes, belleza, hogar, muebles, alimentos, juguetes, etc.), marca "isTechOrElectro": false y "category": "Otros".
+4. Si es modo regalo, incluye un campo breve "giftRecommendation" aconsejando la mejor opción.
+
+Responde ÚNICAMENTE en JSON con este formato exacto:
+{
+  "isTechOrElectro": true,
+  "category": "Tecnologia",
+  "name": "Nombre estándar del producto",
+  "brand": "Marca si aplica",
+  "giftRecommendation": "Texto o null"
+}`;
+
+      const aiRes = await AIService.generateJSON(prompt, 'gemini-flash-lite-latest');
+      if (aiRes && typeof aiRes === 'object') {
+        classification = {
+          ...classification,
+          ...aiRes
+        };
+      }
+    } catch (aiErr) {
+      console.warn('[Hunter] Error en clasificación IA, usando fallback heurístico:', aiErr.message);
+      const techWords = ['celular', 'iphone', 'samsung', 'xiaomi', 'computador', 'laptop', 'tablet', 'tv', 'televisor', 'nevera', 'lavadora'];
+      const isTech = techWords.some(w => query.toLowerCase().includes(w));
+      classification.isTechOrElectro = isTech;
+      classification.category = isTech ? 'Tecnologia' : 'Otros';
+    }
+
+    const outputResult = {
+      success: marketplacesFound.length > 0,
+      query,
+      name: classification.name || query,
+      brand: classification.brand || 'Genérica',
+      category: classification.category || 'Tecnologia',
+      isTechOrElectro: Boolean(classification.isTechOrElectro),
+      giftRecommendation: classification.giftRecommendation || null,
+      marketplacesFound,
+      totalMarketsFound: marketplacesFound.length
+    };
+
+    state.output = outputResult;
+    return outputResult;
   }
 }
 

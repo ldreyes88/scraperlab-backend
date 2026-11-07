@@ -153,7 +153,9 @@ class ScraperLabsApiStrategy extends BaseStrategy {
 
       // Evasión de WebDriver y entorno de automatización
       await page.evaluateOnNewDocument(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'languages', { get: () => ['es-419', 'es', 'en-US', 'en'] });
+        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
         window.chrome = { runtime: {} };
       });
 
@@ -200,12 +202,12 @@ class ScraperLabsApiStrategy extends BaseStrategy {
             console.log(`[ScraperLabsApi] [AntiBot] Reto resuelto. Continuando navegación...`);
             await Promise.all([
               page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 35000 }).catch(() => {}),
-              page.click(challengeSelector)
+              page.click(challengeSelector).catch(() => {})
             ]);
 
             // Intentar esperar a que aparezca un elemento representativo de la página del producto
             try {
-              await page.waitForSelector('.ui-pdp-title, h1, .andes-money-amount, meta[property="og:title"]', { timeout: 8000 });
+              await page.waitForSelector('.ui-pdp-title, h1, .andes-money-amount, meta[property="og:title"]', { timeout: 12000 });
             } catch (waitErr) {
               // Si no aparece de inmediato, aplicar la espera de hidratación
             }
@@ -224,11 +226,28 @@ class ScraperLabsApiStrategy extends BaseStrategy {
         await page.waitForSelector(providerConfig.wait_for_selector, { timeout: 15000 });
       }
 
-      // Espera adicional en ms para permitir ejecución de scripts dinámicos
-      const waitTime = parseInt(providerConfig.wait || 0, 10);
-      if (waitTime > 0) {
-        console.log(`[ScraperLabsApi] Esperando ${waitTime}ms para carga dinámica...`);
+      // Espera adicional en ms para permitir ejecución de scripts dinámicos con Jitter Orgánico
+      const baseWait = parseInt(providerConfig.wait || 0, 10);
+      let waitTime = baseWait;
+      if (baseWait > 0) {
+        // Jitter fluctuante: ±35% sobre el tiempo base para romper patrones rígidos de bot
+        const minFactor = 0.7;
+        const maxFactor = 1.4;
+        const jitterMultiplier = Math.random() * (maxFactor - minFactor) + minFactor;
+        waitTime = Math.round(baseWait * jitterMultiplier);
+        console.log(`[ScraperLabsApi] Esperando ${waitTime}ms (jitter orgánico sobre base ${baseWait}ms)...`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
+      }
+
+      // Micro-scroll orgánico: simula actividad humana real activando telemetría del DOM
+      try {
+        await page.evaluate(() => {
+          const scrollDistance = Math.floor(Math.random() * 350) + 150;
+          window.scrollBy({ top: scrollDistance, behavior: 'smooth' });
+        });
+        await new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * 400) + 200));
+      } catch (scrollErr) {
+        // Ignorar si el contexto del frame no permite scroll
       }
 
       // Extraer HTML completo renderizado

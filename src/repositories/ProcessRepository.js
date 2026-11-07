@@ -88,19 +88,25 @@ class ProcessRepository {
     }
   }
 
-  static async updateStatus(processId, status) {
+  static async updateStatus(processId, status, output = null) {
     try {
+      const updateExp = output 
+        ? 'SET #status = :status, #output = :output' 
+        : 'SET #status = :status';
+      const attrNames = output 
+        ? { '#status': 'status', '#output': 'output' } 
+        : { '#status': 'status' };
+      const attrValues = output 
+        ? { ':status': status, ':output': output } 
+        : { ':status': status };
+
       await dynamoDB.send(
         new UpdateCommand({
           TableName: TABLES.PROCESS,
           Key: { logId: processId },
-          UpdateExpression: 'SET #status = :status',
-          ExpressionAttributeNames: {
-            '#status': 'status'
-          },
-          ExpressionAttributeValues: {
-            ':status': status
-          }
+          UpdateExpression: updateExp,
+          ExpressionAttributeNames: attrNames,
+          ExpressionAttributeValues: attrValues
         })
       );
 
@@ -108,6 +114,28 @@ class ProcessRepository {
     } catch (error) {
       console.error('Error updating status:', error);
       throw error;
+    }
+  }
+
+  static async updateOutput(processId, output) {
+    try {
+      await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.PROCESS,
+          Key: { logId: processId },
+          UpdateExpression: 'SET #output = :output',
+          ExpressionAttributeNames: {
+            '#output': 'output'
+          },
+          ExpressionAttributeValues: {
+            ':output': output
+          }
+        })
+      );
+      return true;
+    } catch (error) {
+      console.error('Error updating output:', error);
+      return false;
     }
   }
 

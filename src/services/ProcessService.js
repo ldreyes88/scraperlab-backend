@@ -2,6 +2,7 @@ const ProcessRepository = require('../repositories/ProcessRepository');
 const ProcessDetailRepository = require('../repositories/ProcessDetailRepository');
 const DomainConfigService = require('./DomainConfigService');
 const ScraperService = require('./ScraperService');
+const { sleep } = require('../utils/helpers');
 const { v4: uuidv4 } = require('uuid');
 
 class ProcessService {
@@ -63,8 +64,9 @@ class ProcessService {
       let failedCount = 0;
       const details = [];
 
-      // Procesar cada URL
-      for (const urlData of urls) {
+      // Procesar cada URL con timing orgánico fluctuante (anti-bot)
+      for (let i = 0; i < urls.length; i++) {
+        const urlData = urls[i];
         const url = typeof urlData === 'string' ? urlData : urlData.url;
         const type = typeof urlData === 'object' ? (urlData.scrapeType || scrapeType) : scrapeType;
 
@@ -106,6 +108,18 @@ class ProcessService {
 
           details.push(detail);
           failedCount++;
+        }
+
+        // Timing orgánico entre peticiones para simular tráfico humano y evitar vetos por IP
+        if (i + 1 < urls.length) {
+          const randomJitter = Math.floor(Math.random() * (5000 - 2500 + 1)) + 2500; // Entre 2.5s y 5.0s
+          await sleep(randomJitter);
+
+          // Pausa preventiva de lote cada 8 URLs
+          if ((i + 1) % 8 === 0) {
+            const batchCoolDown = Math.floor(Math.random() * (22000 - 15000 + 1)) + 15000; // Entre 15s y 22s
+            await sleep(batchCoolDown);
+          }
         }
       }
 

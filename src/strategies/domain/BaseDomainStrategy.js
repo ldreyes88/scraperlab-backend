@@ -411,38 +411,47 @@ extractFromScripts($, patterns = []) {
 
     // Helper para obtener texto del primer elemento que no esté vacío
     // Prioriza atributos sobre el texto directo para evitar ruidos de concatenación (ej: descuentos)
+    // y evalúa los selectores separados por coma en orden de precedencia (izquierda a derecha)
     const getFirstNonEmpty = (selector) => {
       if (!selector) return null;
-      let text = '';
-      $(selector).each((i, el) => {
-        if (text) return;
-        const item = $(el);
+      const selectorList = selector.split(',').map(s => s.trim()).filter(Boolean);
 
-        // Evitar elementos dentro de carruseles de recomendaciones o productos relacionados
-        if (item.closest('.ui-pdp-recommendations, .ui-recommendations, .poly-card, .andes-carousel, aside.ui-pdp-aside--recommendations').length > 0) {
-          return;
-        }
-        
-        // 1. Intentar extraer de atributos comunes de precio si existen
-        const attrVal = item.attr('data-event-price') || 
-                        item.attr('data-price') || 
-                        item.attr('data-normal-price') ||
-                        item.attr('content') || 
-                        item.attr('value');
-        
-        if (attrVal && !text) {
-          text = attrVal.trim();
-        }
-        
-        // 2. Si no hay atributo, usar el texto plano
-        if (!text) {
-          const val = item.text().trim();
-          if (val) {
-            text = val;
+      for (const singleSelector of selectorList) {
+        let text = '';
+        $(singleSelector).each((i, el) => {
+          if (text) return;
+          const item = $(el);
+
+          // Evitar elementos dentro de carruseles de recomendaciones o productos relacionados
+          if (item.closest('.ui-pdp-recommendations, .ui-recommendations, .poly-card, .andes-carousel, aside.ui-pdp-aside--recommendations').length > 0) {
+            return;
           }
-        }
-      });
-      return text || null;
+          
+          // 1. Intentar extraer de atributos comunes de precio si existen
+          const attrVal = item.attr('data-internet-price') ||
+                          item.attr('data-event-price') || 
+                          item.attr('data-price') || 
+                          item.attr('data-normal-price') ||
+                          item.attr('data-cmr-price') ||
+                          item.attr('content') || 
+                          item.attr('value');
+          
+          if (attrVal && !text) {
+            text = attrVal.trim();
+          }
+          
+          // 2. Si no hay atributo, usar el texto plano
+          if (!text) {
+            const val = item.text().trim();
+            if (val) {
+              text = val;
+            }
+          }
+        });
+
+        if (text) return text;
+      }
+      return null;
     };
 
     // 2. Extraer campos estándar
@@ -452,6 +461,16 @@ extractFromScripts($, patterns = []) {
     
     if (cssSelectors.originalPriceSelector || cssSelectors.originalPrice) {
       data.originalPrice = getFirstNonEmpty(cssSelectors.originalPriceSelector || cssSelectors.originalPrice);
+    }
+
+    if (cssSelectors.cmrPriceSelector || cssSelectors.cmrPrice) {
+      data.cmrPrice = getFirstNonEmpty(cssSelectors.cmrPriceSelector || cssSelectors.cmrPrice);
+    } else {
+      // Detección automática de precio con tarjeta CMR si existe en la página
+      const cmrEl = $('[data-cmr-price]').first();
+      if (cmrEl.length > 0) {
+        data.cmrPrice = cmrEl.attr('data-cmr-price') || cmrEl.text().trim();
+      }
     }
 
     if (cssSelectors.titleSelector || cssSelectors.title) {
@@ -482,7 +501,102 @@ extractFromScripts($, patterns = []) {
       data.availability = getFirstNonEmpty(cssSelectors.availabilitySelector || cssSelectors.availability);
     }
 
+    // 3. Extraer opciones de pago adicionales configuradas para el dominio (pay_options)
+    const payOptionsConfig = selectors.pay_options || 
+                             selectors.payOptions || 
+                             cssSelectors.pay_options || 
+                             cssSelectors.payOptions;
+    data.pay_options = this.extractPayOptions($, payOptionsConfig, url);
+
     return data;
+  }
+
+  /**
+   * Extrae opciones de pago adicionales configuradas por dominio
+   * Ej: Tarjeta CMR (Falabella), Tarjeta Éxito, Tarjeta Alkosto, Meli+, etc.
+   * @param {object} $ - Instancia de Cheerio
+   * @param {object|array} configPayOptions - Configuración de pay_options del dominio
+   * @param {string} url - URL del producto
+   */
+  extractPayOptions($, configPayOptions = {}, url = '') {
+    const options = {};
+    if (!configPayOptions) return options;
+
+    // Normalizar a lista de configuraciones de opciones de pago
+    const rules = Array.isArray(configPayOptions)
+      ? configPayOptions
+      : Object.entries(configPayOptions).map(([key, cfg]) => ({ 
+          key, 
+          ...(typeof cfg === 'object' ? cfg : { selector: cfg }) 
+        }));
+
+    for (const rule of rules) {
+      const key = rule.key || rule.id;
+      if (!key) continue;
+
+      let extractedValue = null;
+
+      // 1. Extracción por selectores CSS / atributos
+      if (rule.selector) {
+        const selectorList = rule.selector.split(',').map(s => s.trim()).filter(Boolean);
+        for (const singleSelector of selectorList) {
+          const el = $(singleSelector).first();
+          if (el.length > 0) {
+            extractedValue = (rule.attribute ? el.attr(rule.attribute) : null) || 
+                             el.attr('data-cmr-price') || 
+                             el.attr('data-internet-price') ||
+                             el.attr('data-price') || 
+                             el.attr('value') || 
+                             el.text().trim();
+            if (extractedValue) break;
+          }
+        }
+      }
+
+      // 2. Extracción por Regex si se configuró
+      if (!extractedValue && rule.regex) {
+        const html = $.html();
+        const rx = new RegExp(rule.regex, 'i');
+        const match = html.match(rx);
+        if (match && match[1]) {
+          extractedValue = match[1];
+        }
+      }
+
+      if (extractedValue) {
+        const cleanVal = cleanPrice(extractedValue, null, url);
+        if (cleanVal > 0) {
+          options[key] = {
+            id: key,
+            name: rule.name || key,
+            price: cleanVal,
+            badge: rule.badge || null,
+            ...(rule.installments ? { installments: rule.installments } : {}),
+            ...(rule.icon ? { icon: rule.icon } : {})
+          };
+        }
+      }
+    }
+
+    // 3. Auto-detecciones inteligentes como fallback estándar
+    // Si no vino en config pero existe data-cmr-price en el DOM (Falabella)
+    if (!options.cmr) {
+      const cmrEl = $('[data-cmr-price]').first();
+      if (cmrEl.length > 0) {
+        const cmrRaw = cmrEl.attr('data-cmr-price') || cmrEl.text().trim();
+        const cmrPrice = cleanPrice(cmrRaw, null, url);
+        if (cmrPrice > 0) {
+          options.cmr = {
+            id: 'cmr',
+            name: 'Tarjeta CMR',
+            price: cmrPrice,
+            badge: 'CMR'
+          };
+        }
+      }
+    }
+
+    return options;
   }
 
   /**
@@ -495,6 +609,13 @@ extractFromScripts($, patterns = []) {
     // Si la lógica específica no obtuvo precios pero los selectores sí, los usamos
     if (!merged.currentPrice && selectorData.currentPrice) merged.currentPrice = selectorData.currentPrice;
     if (!merged.originalPrice && selectorData.originalPrice) merged.originalPrice = selectorData.originalPrice;
+    if (!merged.cmrPrice && selectorData.cmrPrice) merged.cmrPrice = selectorData.cmrPrice;
+
+    // Fusionar opciones de pago (pay_options)
+    merged.pay_options = {
+      ...(selectorData.pay_options || {}),
+      ...(specificData.pay_options || {})
+    };
     
     // Llenar metadatos adicionales que las estrategias hardcoded suelen omitir
     if (!merged.title && selectorData.title) merged.title = selectorData.title;
@@ -528,6 +649,7 @@ extractFromScripts($, patterns = []) {
 
     const finalCurrent = cleanPrice(finalPrice, country, url);
     const finalOriginal = cleanPrice(finalOriginalPrice, country, url);
+    const finalCmr = details.cmrPrice ? cleanPrice(details.cmrPrice, country, url) : null;
 
     // Validación de seguridad: Si el precio subió más del 100% respecto al original (o un umbral definido),
     // es probable que sea un error de scraping (como un 0 extra)
@@ -564,19 +686,48 @@ extractFromScripts($, patterns = []) {
       };
     }
 
+    // Formatear opciones de pago (pay_options)
+    const rawPayOptions = details.pay_options || details.payOptions || {};
+    const formattedPayOptions = {};
+
+    for (const [key, opt] of Object.entries(rawPayOptions)) {
+      if (!opt || (!opt.price && typeof opt !== 'number')) continue;
+      const optPrice = typeof opt === 'number' ? opt : cleanPrice(opt.price, country, url);
+      if (optPrice <= 0) continue;
+
+      const optDiscount = (finalCurrent > 0 && finalCurrent > optPrice)
+        ? Math.round((1 - (optPrice / finalCurrent)) * 100)
+        : 0;
+
+      formattedPayOptions[key] = {
+        id: opt.id || key,
+        name: opt.name || key,
+        price: optPrice,
+        currency: details.currency || currencyConfig.currency || 'COP',
+        discount_percentage: optDiscount,
+        badge: opt.badge || null,
+        ...(opt.installments ? { installments: opt.installments } : {}),
+        ...(opt.icon ? { icon: opt.icon } : {})
+      };
+    }
+
     return {
       success,
       marketplace: marketplace || details.marketplace,
       prices: {
         current: finalCurrent,
         original: finalOriginal,
+        ...(finalCmr ? { cmr: finalCmr } : {}),
         discount_percentage: finalOriginal > finalCurrent
           ? Math.round((1 - (finalCurrent / finalOriginal)) * 100)
           : 0,
-        currency: details.currency || currencyConfig.currency || 'COP'
+        currency: details.currency || currencyConfig.currency || 'COP',
+        pay_options: formattedPayOptions
       },
       details: {
         ...details,
+        ...(finalCmr ? { cmrPrice: finalCmr } : {}),
+        pay_options: formattedPayOptions,
         title: details.title || '',
         url: details.url || url,
         image: details.image || ''
@@ -648,6 +799,30 @@ extractFromScripts($, patterns = []) {
     const finalOriginal = cleanPrice(originalPrice || currentPrice, country, url);
     const currencyConfig = getCurrencyConfig(country, url);
 
+    const rawPayOptions = details.pay_options || details.payOptions || {};
+    const formattedPayOptions = {};
+
+    for (const [key, opt] of Object.entries(rawPayOptions)) {
+      if (!opt || (!opt.price && typeof opt !== 'number')) continue;
+      const optPrice = typeof opt === 'number' ? opt : cleanPrice(opt.price, country, url);
+      if (optPrice <= 0) continue;
+
+      const optDiscount = (finalCurrent > 0 && finalCurrent > optPrice)
+        ? Math.round((1 - (optPrice / finalCurrent)) * 100)
+        : 0;
+
+      formattedPayOptions[key] = {
+        id: opt.id || key,
+        name: opt.name || key,
+        price: optPrice,
+        currency: currencyConfig.currency || 'COP',
+        discount_percentage: optDiscount,
+        badge: opt.badge || null,
+        ...(opt.installments ? { installments: opt.installments } : {}),
+        ...(opt.icon ? { icon: opt.icon } : {})
+      };
+    }
+
     return {
       success,
       scrapeType: 'searchSpecific',
@@ -663,7 +838,8 @@ extractFromScripts($, patterns = []) {
         discount_percentage: finalOriginal > finalCurrent
           ? Math.round((1 - (finalCurrent / finalOriginal)) * 100)
           : 0,
-        currency: currencyConfig.currency || 'COP'
+        currency: currencyConfig.currency || 'COP',
+        pay_options: formattedPayOptions
       },
       metadata: {
         method,
