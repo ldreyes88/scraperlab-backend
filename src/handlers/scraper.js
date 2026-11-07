@@ -281,3 +281,18 @@ exports.createBatch = async (req, res, next) => {
     next(error);
   }
 };
+
+const SocialScraperService = require('../services/SocialScraperService');
+
+exports.scrapeSocial = async (req, res, next) => {
+  try {
+    const { platform, username, url } = req.body;
+    const result = await SocialScraperService.scrapeSocialProfile({ platform, username, url });
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
