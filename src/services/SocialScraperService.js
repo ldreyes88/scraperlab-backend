@@ -88,12 +88,43 @@ class SocialScraperService {
   }
 
   /**
-   * Extrae información de Instagram resolviendo su avatar y metadatos públicos
+   * Extrae información de Instagram resolviendo metadatos públicos o sesión autenticada si existe
    */
   static async scrapeInstagram(username) {
     const cleanUser = String(username).replace('@', '').trim();
-    const name = cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1);
-    const bio = `Creador verificado de Instagram (@${cleanUser}) con audiencia en Colombia.`;
+    let name = cleanUser.charAt(0).toUpperCase() + cleanUser.slice(1);
+    let bio = `Creador verificado de Instagram (@${cleanUser}) con audiencia en Colombia.`;
+    let followers = null;
+    let following = null;
+    let postsCount = null;
+    let isVerified = false;
+
+    // Si hay cookie de sesión en variables de entorno, intentar extracción profunda
+    const sessionId = process.env.INSTAGRAM_SESSION_ID || process.env.INSTAGRAM_COOKIE;
+    if (sessionId) {
+      try {
+        const res = await axios.get(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${cleanUser}`, {
+          headers: {
+            'x-ig-app-id': '936619743392459',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Cookie': sessionId.includes('sessionid=') ? sessionId : `sessionid=${sessionId}`
+          },
+          timeout: 6000
+        });
+        const u = res.data?.data?.user;
+        if (u) {
+          name = u.full_name || name;
+          bio = u.biography || bio;
+          followers = u.edge_followed_by?.count || null;
+          following = u.edge_follow?.count || null;
+          postsCount = u.edge_owner_to_timeline_media?.count || null;
+          isVerified = Boolean(u.is_verified);
+        }
+      } catch (err) {
+        console.log(`[SocialScraperService] Instagram session scrape fallback: ${err.message}`);
+      }
+    }
+
     const avatarUrl = this.getAvatarUrl('instagram', cleanUser);
 
     return {
@@ -104,6 +135,10 @@ class SocialScraperService {
       name,
       avatarUrl,
       bio,
+      followers,
+      following,
+      postsCount,
+      isVerified,
       profileUrl: `https://www.instagram.com/${cleanUser}/`,
       extractedAt: nowColombiaISO()
     };
