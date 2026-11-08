@@ -93,6 +93,7 @@ class DomainRepository {
         strategyOrder: configData.strategyOrder || existing?.strategyOrder || ['scripts', 'jsonLd', 'css', 'meta', 'nextData'],
         supportedTypes: configData.supportedTypes || existing?.supportedTypes || ['detail'],
         subdomains: configData.subdomains || existing?.subdomains || [],
+        domainType: configData.domainType || existing?.domainType || (['tiktok.com', 'instagram.com', 'x.com', 'twitter.com', 'facebook.com', 'youtube.com'].includes(domainId) ? 'profile' : 'product'),
         customRateLimit: configData.customRateLimit !== undefined ? configData.customRateLimit : (existing?.customRateLimit || null),
         countryCode: configData.countryCode || configData.country || existing?.countryCode || 'CO',
         typeService: configData.typeService || existing?.typeService || ['scraping'],

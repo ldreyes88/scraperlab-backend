@@ -40,20 +40,29 @@ class StrategyFactory {
   }
 
   /**
-   * Retorna la estrategia de dominio (ahora siempre GenericDynamicStrategy).
-   * La lógica de parseo se determina en tiempo de ejecución basada en domainConfig de la BD.
+   * Retorna la estrategia de dominio según la tipología (profile vs product).
+   * Para perfiles de redes sociales retorna SocialProfileStrategy.
+   * Para productos de e-commerce retorna GenericDynamicStrategy.
    * 
-   * @param {string} domain - Dominio normalizado (ej: tiendaclaro.com.co)
+   * @param {string} domain - Dominio normalizado (ej: tiendaclaro.com.co o tiktok.com)
    * @param {string} providerId - ID del proveedor de scraping
-   * @param {string} scrapeType - Tipo de scraping solicitado (detail, search, searchSpecific)
+   * @param {string} scrapeType - Tipo de scraping solicitado (detail, search, searchSpecific, profile)
+   * @param {Object} domainConfig - Configuración del dominio obtenida de BD
    */
-  static getDomainStrategy(domain, providerId = 'scraperapi', scrapeType = 'detail') {
+  static getDomainStrategy(domain, providerId = 'scraperapi', scrapeType = 'detail', domainConfig = {}) {
     // 1. Instanciar el proveedor de scraping
     const providerStrategy = this.getStrategy(providerId);
 
-    // 2. Retornar la estrategia dinámica universal
-    // Esta estrategia delegará la extracción a los selectores y flags definidos en la BD
-    console.log(`[StrategyFactory] Iniciando GenericDynamicStrategy para: ${domain} (Tipo: ${scrapeType})`);
+    // 2. Si la tipología es 'profile' o es un dominio social reconocido, delegar a SocialProfileStrategy
+    const isSocialDomain = ['tiktok.com', 'instagram.com', 'x.com', 'twitter.com', 'facebook.com', 'youtube.com'].includes(domain);
+    if (domainConfig?.domainType === 'profile' || scrapeType === 'profile' || isSocialDomain) {
+      const SocialProfileStrategy = require('./domain/SocialProfileStrategy');
+      console.log(`[StrategyFactory] Iniciando SocialProfileStrategy para tipología profile: ${domain} (Tipo: ${scrapeType})`);
+      return new SocialProfileStrategy(providerStrategy);
+    }
+
+    // 3. Retornar la estrategia dinámica universal de e-commerce / productos
+    console.log(`[StrategyFactory] Iniciando GenericDynamicStrategy para producto: ${domain} (Tipo: ${scrapeType})`);
     return new GenericDynamicStrategy(providerStrategy);
   }
 

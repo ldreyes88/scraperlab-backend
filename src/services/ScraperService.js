@@ -10,8 +10,8 @@ class ScraperService {
     const startTime = Date.now();
     const domain = extractDomain(url);
     
-    // Validar que el tipo de scraping es válido
-    const validTypes = ['detail', 'search', 'searchSpecific'];
+    // Validar que el tipo de scraping es válido (soporta e-commerce y perfiles sociales)
+    const validTypes = ['detail', 'search', 'searchSpecific', 'profile'];
     if (!validTypes.includes(scrapeType)) {
       throw new Error(
         `Tipo de scraping inválido: '${scrapeType}'. ` +
@@ -23,11 +23,12 @@ class ScraperService {
       // 1. Obtener configuración del dominio
       const domainConfig = await DomainConfigService.getConfigForUrl(url, scrapeType);
       
-      // 2. Obtener estrategia específica para el dominio y tipo
+      // 2. Obtener estrategia específica para el dominio, tipología y tipo
       const strategy = StrategyFactory.getDomainStrategy(
         domain, 
         domainConfig.providerId,
-        scrapeType
+        scrapeType,
+        domainConfig
       );
 
       // 3. Ejecutar extracción con la estrategia del dominio
@@ -44,10 +45,9 @@ class ScraperService {
       if (!result.success) {
         finalStatus = 'failed';
         scrapeError = result.error || 'Unknown extraction error';
-        // Si hay un error retornado por la estrategia, usualmente es de extracción o API interna de la estrategia
         errorType = scrapeError.toLowerCase().includes('api') ? 'api_error' : 'extraction_error';
-      } else if (scrapeType === 'detail' && (!result.details?.title || result.details?.title === '')) {
-        // Si es una página de detalle y no pudimos extraer el título, es un fallo de extracción
+      } else if (scrapeType === 'detail' && domainConfig.domainType !== 'profile' && (!result.details?.title || result.details?.title === '')) {
+        // Si es una página de detalle de producto y no pudimos extraer el título, es un fallo de extracción
         finalStatus = 'failed';
         scrapeError = 'Extraction failed: Title not found (Possible selector issue or blocked content)';
         errorType = 'extraction_error';

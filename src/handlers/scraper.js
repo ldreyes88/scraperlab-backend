@@ -58,8 +58,8 @@ exports.scrapeUrl = async (req, res, next) => {
       });
     }
 
-    // Validar scrapeType si se proporciona
-    const validTypes = ['detail', 'search', 'searchSpecific'];
+    // Validar scrapeType si se proporciona (soporta detail, search, searchSpecific y profile)
+    const validTypes = ['detail', 'search', 'searchSpecific', 'profile'];
     const type = scrapeType || 'detail'; // Default: 'detail' para retrocompatibilidad
     
     if (scrapeType && !validTypes.includes(scrapeType)) {

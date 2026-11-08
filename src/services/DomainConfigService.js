@@ -105,10 +105,12 @@ class DomainConfigService {
    * Configuración por defecto
    */
   static async getDefaultConfig(domain) {
+    const isSocial = ['tiktok.com', 'instagram.com', 'x.com', 'twitter.com', 'facebook.com', 'youtube.com'].includes(domain);
     return {
       domainId: domain,
-      providerId: 'scraperapi',
-      providerConfig: {
+      domainType: isSocial ? 'profile' : 'product',
+      providerId: isSocial ? 'scraperlabsapi' : 'scraperapi',
+      providerConfig: isSocial ? { wait: 3500, timeout: 35000 } : {
         render: false,
         premium: false,
         device_type: 'desktop',
@@ -197,6 +199,7 @@ class DomainConfigService {
       
       supportedTypes: supportedTypes || ['detail'], 
       subdomains: subdomains || [],
+      domainType: configData.domainType || (['tiktok.com', 'instagram.com', 'x.com', 'twitter.com', 'facebook.com', 'youtube.com'].includes(domainId) ? 'profile' : 'product'),
       strategyOrder: strategyOrder || ['jsonLd', 'nextData', 'scripts', 'meta', 'css'],
       customRateLimit: customRateLimit || null,
       countryCode: countryCode || configData.countryCode || configData.country || 'CO',
