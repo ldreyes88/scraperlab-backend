@@ -25,15 +25,7 @@ class AgentOrchestratorService {
     }
 
     if (!bot) {
-      if (intent === 'GIFT_ADVICE') {
-      return [
-        'Amigo secreto hasta .000',
-        'Regalo tecnológico para novio',
-        'Kit de café o cocina para mamá',
-        'Opciones hasta .000'
-      ];
-    }
-    if (botId === 'oferty') {
+      if (botId === 'oferty') {
         bot = {
           botId: 'oferty',
           name: 'Oferty',
@@ -100,6 +92,7 @@ class AgentOrchestratorService {
     let actionData = null;
 
     // 4. Ejecución del Agente Especializado
+    const isOferty = bot.botId === 'oferty' || bot.clientId === 'oferty';
     if (triageResult.intent === 'RESTRICTED') {
       // GUARDRAIL ESTRICTO: Bloqueo de consultas capciosas, engañosas o fuera de dominio / revelación de arquitectura
       if (isOferty) {
