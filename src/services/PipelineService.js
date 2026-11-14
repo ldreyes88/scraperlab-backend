@@ -7,6 +7,10 @@ const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
 const { nowColombiaISO } = require('../utils/time');
 
+// Caché en memoria para clasificaciones de Hunter (evita re-gastar tokens en búsquedas repetidas)
+const hunterClassificationCache = new Map();
+const MAX_HUNTER_CACHE_SIZE = 500;
+
 class PipelineService {
   /**
    * Iniciar la ejecución de un pipeline
@@ -937,19 +941,32 @@ class PipelineService {
     const settled = await Promise.all(promises);
     const marketplacesFound = settled.filter(Boolean);
 
-    // Clasificación con IA (Gemini)
+    // Clasificación con IA (Gemini con Slimming y Caché)
     let classification = {
       isTechOrElectro: true,
       category: 'Tecnologia',
       name: query
     };
 
-    try {
-      const prompt = `Analiza la siguiente búsqueda de productos en comercio electrónico colombiano:
+    const cacheKey = `${query.toLowerCase().trim()}_${isGift ? 'gift' : 'std'}`;
+    if (hunterClassificationCache.has(cacheKey)) {
+      console.log(`[Hunter] Usando clasificación en caché para "${query}" (0 tokens)`);
+      classification = { ...hunterClassificationCache.get(cacheKey) };
+    } else {
+      try {
+        // Prompt Slimming: enviamos solo los campos estrictamente necesarios para análisis
+        // reduciendo más del 80% de los tokens de entrada al eliminar URLs gigantes e imágenes
+        const slimMarkets = marketplacesFound.map(m => ({
+          tienda: m.marketplace,
+          titulo: m.name,
+          precio: m.currentPrice
+        }));
+
+        const prompt = `Analiza la siguiente búsqueda de productos en comercio electrónico colombiano:
 Búsqueda: "${query}"
 Es modo regalo: ${isGift ? 'Sí' : 'No'}
 Resultados encontrados (Top 1 por tienda):
-${JSON.stringify(marketplacesFound, null, 2)}
+${JSON.stringify(slimMarkets, null, 2)}
 
 Tu misión:
 1. Clasifica si el producto pertenece a la vertical de "Tecnología" (celulares, computadores, tablets, smartwatches, audífonos, accesorios tech) o "Electrodomésticos" (televisores, neveras, lavadoras, aires, electrodomésticos de cocina).
@@ -966,19 +983,27 @@ Responde ÚNICAMENTE en JSON con este formato exacto:
   "giftRecommendation": "Texto o null"
 }`;
 
-      const aiRes = await AIService.generateJSON(prompt, 'gemini-flash-lite-latest');
-      if (aiRes && typeof aiRes === 'object') {
-        classification = {
-          ...classification,
-          ...aiRes
-        };
+        const aiRes = await AIService.generateJSON(prompt, 'gemini-flash-lite-latest');
+        if (aiRes && typeof aiRes === 'object') {
+          classification = {
+            ...classification,
+            ...aiRes
+          };
+
+          // Guardar en caché LRU
+          if (hunterClassificationCache.size >= MAX_HUNTER_CACHE_SIZE) {
+            const firstKey = hunterClassificationCache.keys().next().value;
+            hunterClassificationCache.delete(firstKey);
+          }
+          hunterClassificationCache.set(cacheKey, classification);
+        }
+      } catch (aiErr) {
+        console.warn('[Hunter] Error en clasificación IA, usando fallback heurístico:', aiErr.message);
+        const techWords = ['celular', 'iphone', 'samsung', 'xiaomi', 'computador', 'laptop', 'tablet', 'tv', 'televisor', 'nevera', 'lavadora'];
+        const isTech = techWords.some(w => query.toLowerCase().includes(w));
+        classification.isTechOrElectro = isTech;
+        classification.category = isTech ? 'Tecnologia' : 'Otros';
       }
-    } catch (aiErr) {
-      console.warn('[Hunter] Error en clasificación IA, usando fallback heurístico:', aiErr.message);
-      const techWords = ['celular', 'iphone', 'samsung', 'xiaomi', 'computador', 'laptop', 'tablet', 'tv', 'televisor', 'nevera', 'lavadora'];
-      const isTech = techWords.some(w => query.toLowerCase().includes(w));
-      classification.isTechOrElectro = isTech;
-      classification.category = isTech ? 'Tecnologia' : 'Otros';
     }
 
     const outputResult = {
