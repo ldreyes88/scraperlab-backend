@@ -73,6 +73,7 @@ scraperlab-backend/
 │   ├── migrate-domains-scraperlabsapi.js (Sincronización a ScraperLabsApi para mac-center, ishop y movistar)
 │   └── seed-pipelines.js               (Semillas de pipelines legados)
 ├── docs/
+│   ├── guia-construccion-arquitectura-chatbots.md (Estándar y arquitectura completa para construcción de chatbots)
 │   ├── agente-oferty-configuracion.md  (Documentación del agente oficial Oferty y directivas de seguridad)
 │   └── oferty-integration/             (Paquete de integración para oferty-backend y oferty-web)
 ├── AGENTS.md

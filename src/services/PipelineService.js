@@ -788,32 +788,51 @@ class PipelineService {
       // 1. ÉXITO (Conector nativo VTEX ultrarrápido < 150ms)
       if (key === 'exito') {
         try {
-          const exitoUrl = `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`;
-          const res = await fetch(exitoUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-            }
-          });
-          if (res.ok) {
-            const items = await res.json();
-            if (Array.isArray(items) && items.length > 0) {
-              const top1 = items[0];
-              const price = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
-              const origPrice = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
-              const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
-              return {
-                marketplace: 'Éxito',
-                domainId: 'exito.com',
-                name: top1.productName || query,
-                currentPrice: price,
-                originalPrice: origPrice,
-                discount,
-                url: top1.link || `https://www.exito.com/${top1.linkText}/p`,
-                image: top1.items?.[0]?.images?.[0]?.imageUrl || null,
-                position: 1,
-                success: true
-              };
-            }
+          const exitoUrls = [
+            `https://www.exito.com/io/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`,
+            `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`
+          ];
+          let items = null;
+          for (const exitoUrl of exitoUrls) {
+            try {
+              const res = await fetch(exitoUrl, {
+                redirect: 'follow',
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                  'Accept': 'application/json'
+                }
+              });
+              if (res.ok) {
+                const json = await res.json();
+                if (Array.isArray(json) && json.length > 0) {
+                  items = json;
+                  break;
+                }
+              }
+            } catch (_) {}
+          }
+          if (items && items.length > 0) {
+            const top1 = items[0];
+            const price = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
+            const origPrice = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
+            const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
+            const pName = top1.productName || query;
+            return {
+              marketplace: 'Éxito',
+              marketplaceName: 'Éxito',
+              store: 'Éxito',
+              domainId: 'exito.com',
+              name: pName,
+              productName: pName,
+              title: pName,
+              currentPrice: price,
+              originalPrice: origPrice,
+              discount,
+              url: top1.link || `https://www.exito.com/${top1.linkText}/p`,
+              image: top1.items?.[0]?.images?.[0]?.imageUrl || null,
+              position: 1,
+              success: true
+            };
           }
         } catch (err) {
           console.warn('[Hunter] Error en conector directo de Éxito:', err.message);
@@ -848,11 +867,17 @@ class PipelineService {
               const host = key === 'ktronix' ? 'https://www.ktronix.com' : 'https://www.alkosto.com';
               const pUrl = top1.url_es_string ? `${host}${top1.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
               const pImg = top1['img-750wx750h_string'] || top1['img-310wx310h_string'] || top1['img-1400wx1400h_string'] || null;
+              const storeName = key === 'ktronix' ? 'Ktronix' : 'Alkosto';
+              const pName = top1.name_text_es || query;
 
               return {
-                marketplace: key === 'ktronix' ? 'Ktronix' : 'Alkosto',
+                marketplace: storeName,
+                marketplaceName: storeName,
+                store: storeName,
                 domainId: `${key}.com`,
-                name: top1.name_text_es || query,
+                name: pName,
+                productName: pName,
+                title: pName,
                 currentPrice: price,
                 originalPrice: origPrice,
                 discount,
@@ -883,11 +908,16 @@ class PipelineService {
           const price = toSafeNumber(top1.currentPrice || top1.price, 0);
           const origPrice = toSafeNumber(top1.originalPrice || top1.price, price);
           const discount = toSafeNumber(top1.discount, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
+          const pName = top1.title || top1.name || query;
 
           return {
             marketplace: config.name,
+            marketplaceName: config.name,
+            store: config.name,
             domainId: config.domainId,
-            name: top1.title || top1.name || query,
+            name: pName,
+            productName: pName,
+            title: pName,
             currentPrice: price,
             originalPrice: origPrice,
             discount,
@@ -952,7 +982,8 @@ Responde ÚNICAMENTE en JSON con este formato exacto:
     }
 
     const outputResult = {
-      success: marketplacesFound.length > 0,
+      success: true, // El nodo Hunter se ejecutó exitosamente
+      foundCount: marketplacesFound.length,
       query,
       name: classification.name || query,
       brand: classification.brand || 'Genérica',

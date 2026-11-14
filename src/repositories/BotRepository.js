@@ -84,6 +84,7 @@ class BotRepository {
       const item = {
         enabled: true,
         status: 'draft', // draft | training | active | paused
+        hideArchitecture: true, // Protección global contra divulgación de arquitectura técnica e infraestructura
         channels: {
           web: { enabled: true, allowedDomains: ['*'] },
           whatsapp: { enabled: false, phoneNumber: '' }

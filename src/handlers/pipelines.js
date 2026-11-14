@@ -77,8 +77,12 @@ exports.deletePipeline = async (req, res, next) => {
 exports.runPipeline = async (req, res, next) => {
   try {
     const { pipelineId } = req.params;
-    // Iniciamos la ejecución asíncrona y devolvemos el processId
-    const processId = await PipelineService.start(pipelineId, req.body);
+    const isSync = req.query.sync === 'true' || 
+                   req.body?.isSync === true || 
+                   req.body?.mode === 'live_realtime';
+
+    // Iniciamos la ejecución (síncrona para búsquedas live en tiempo real, asíncrona para pipelines batch)
+    const processId = await PipelineService.start(pipelineId, req.body, { isSync });
     res.json({
       success: true,
       processId

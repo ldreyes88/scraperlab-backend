@@ -7,7 +7,7 @@ const ChatSessionRepository = require('../repositories/ChatSessionRepository');
  */
 exports.sendMessage = async (req, res, next) => {
   try {
-    const { botId = 'scrapy', sessionId, message, history = [], channel = 'web' } = req.body;
+    const { botId = 'scrapy', sessionId, message, history = [], channel = 'web', mode } = req.body;
 
     if (!message || message.trim() === '') {
       return res.status(400).json({
@@ -21,7 +21,8 @@ exports.sendMessage = async (req, res, next) => {
       sessionId,
       message,
       history,
-      channel
+      channel,
+      mode
     });
 
     return res.json({
