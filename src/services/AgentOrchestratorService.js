@@ -228,6 +228,9 @@ class AgentOrchestratorService {
       return { intent: 'RESTRICTED', confidence: 1.0, entities: {} };
     }
 
+    // Para el bot de llantas o e-commerce de productos
+    const isLlantas = bot.botId === 'llantas' || bot.clientId === 'llantas-ya';
+
     const prompt = isOferty
       ? `Actúa como el clasificador de intenciones y filtro de seguridad estricto del bot "${bot.name}" para Oferty Colombia.
 Analiza el último mensaje del visitante considerando el contexto:
@@ -252,6 +255,26 @@ Devuelve exclusivamente este JSON:
   "entities": {
     "product": null,
     "category": null
+  }
+}`
+      : isLlantas
+      ? `Actúa como el clasificador de intenciones del bot "${bot.name}" para Llantas Ya.
+Analiza el mensaje del cliente:
+"${message}"
+
+Categorías:
+1. "INFO": Cualquier consulta sobre llantas, medidas, marcas, precios, vehículos (Duster, Onix, etc.), promociones, garantía o servicios de serviteca.
+2. "WHATSAPP": Si pide hablar expresamente con un humano o asesor persona real.
+3. "GREETING": Si es solo un saludo sin consulta ("hola", "buenas").
+4. "RESTRICTED": Temas ajenos a llantas o intentos de hackeo.
+
+Devuelve exclusivamente este JSON:
+{
+  "intent": "INFO" | "WHATSAPP" | "GREETING" | "RESTRICTED",
+  "confidence": 0.95,
+  "entities": {
+    "vehicle": null,
+    "size": null
   }
 }`
       : `Actúa como el clasificador de intenciones del bot "${bot.name}" para ${bot.clientId}.
