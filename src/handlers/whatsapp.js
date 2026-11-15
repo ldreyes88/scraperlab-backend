@@ -43,15 +43,18 @@ exports.handleWebhook = async (req, res, next) => {
     const { botId } = req.params;
     const payload = req.body;
 
-    // Responder 200 OK inmediatamente a Meta para evitar retries automáticos
-    res.status(200).json({ status: 'EVENT_RECEIVED' });
-
-    // Procesar el mensaje en background
-    WhatsAppService.handleIncomingWebhook(payload, botId).catch(err => {
+    // En AWS Lambda NO podemos dejar promesas flotantes en segundo plano
+    // porque el runtime congela el contenedor al responder. Esperamos el procesamiento:
+    try {
+      await WhatsAppService.handleIncomingWebhook(payload, botId);
+    } catch (err) {
       console.error('[WhatsApp Webhook Error] Falló procesamiento de mensaje entrante:', err);
-    });
+    }
+
+    return res.status(200).json({ status: 'EVENT_RECEIVED' });
   } catch (error) {
     console.error('[WhatsApp Webhook Handler Error]:', error);
+    return res.status(200).json({ status: 'EVENT_RECEIVED' });
   }
 };
 
