@@ -17,6 +17,7 @@ const pipelinesHandler = require('./src/handlers/pipelines');
 const nodesHandler = require('./src/handlers/nodes');
 const botsHandler = require('./src/handlers/bots');
 const chatHandler = require('./src/handlers/chat');
+const whatsappHandler = require('./src/handlers/whatsapp');
 
 const app = express();
 
@@ -150,6 +151,13 @@ app.post('/api/chat/message', chatHandler.sendMessage);
 app.post('/api/chat/lead', chatHandler.saveLead);
 app.get('/api/chat/sessions/:sessionId', chatHandler.getSession);
 app.get('/api/bots/:botId/public', botsHandler.getPublicBotConfig);
+
+// 📱 WhatsApp Cloud API Webhooks & Mensajería
+app.get('/api/whatsapp/webhook', whatsappHandler.verifyWebhook);
+app.post('/api/whatsapp/webhook', whatsappHandler.handleWebhook);
+app.get('/api/whatsapp/webhook/:botId', whatsappHandler.verifyWebhook);
+app.post('/api/whatsapp/webhook/:botId', whatsappHandler.handleWebhook);
+app.post('/api/whatsapp/send', verifyAuth, whatsappHandler.sendMessage);
 
 app.get('/api/bots', verifyAuth, botsHandler.getAllBots);
 app.get('/api/bots/:botId', verifyAuth, botsHandler.getBot);

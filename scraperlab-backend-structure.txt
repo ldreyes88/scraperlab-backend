@@ -5,6 +5,7 @@ scraperlab-backend/
 │   ├── handlers/
 │   │   ├── bots.js                     (CRUD de bots, entrenamiento de conocimiento y config pública)
 │   │   ├── chat.js                     (Endpoints conversacionales, captura de leads y sesiones)
+│   │   ├── whatsapp.js                 (Webhooks verificación/recepción de WhatsApp Cloud API y envío manual)
 │   │   ├── scraper.js                  (Endpoints de scraping)
 │   │   ├── providers.js                (CRUD de proveedores)
 │   │   ├── domains.js                  (CRUD de dominios/configuraciones)
@@ -17,6 +18,7 @@ scraperlab-backend/
 │   │   └── process.js                  (Logs y estadísticas de ejecuciones)
 │   ├── services/
 │   │   ├── AgentOrchestratorService.js (Orquestador multi-agente: Router, RAG, Lead Qualifier, Handoff)
+│   │   ├── WhatsAppService.js          (Servicio de integración WhatsApp Cloud API de Meta multi-empresa)
 │   │   ├── BotTrainingService.js       (Pipeline de ingesta de URLs, limpieza y extracción semántica)
 │   │   ├── ScraperService.js           (Lógica de scraping principal)
 │   │   ├── PipelineService.js          (Orquestador de pipelines, hidratación nodeRef y evaluación de condiciones)
@@ -69,6 +71,7 @@ scraperlab-backend/
 │   ├── createTablePipelinesTable.js    (Creación de tabla ScraperLab-Pipelines en DynamoDB)
 │   ├── migrate-pipelines-to-nodes.js   (Migración de pipelines existentes a nodos independientes)
 │   ├── seed-oferty-nodes-and-pipeline.js (Semilla de nodos independientes y pipeline de Oferty)
+│   ├── seed_llantas_whatsapp.js        (Semilla bot de Llantas Ya, RAG catálogo y nodo whatsapp-notice)
 │   ├── seed-domains-ktronix-ml.js      (Sincronización de configuraciones de scraping ScraperLabsApi para Ktronix y MercadoLibre)
 │   ├── migrate-domains-scraperlabsapi.js (Sincronización a ScraperLabsApi para mac-center, ishop y movistar)
 │   └── seed-pipelines.js               (Semillas de pipelines legados)

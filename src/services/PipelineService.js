@@ -493,12 +493,20 @@ class PipelineService {
     
     // Reemplazo estándar para templates compuestos (devuelve siempre string)
     return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
-      const parts = path.trim().split('.');
+      const trimmedPath = path.trim();
+
+      // Soporte para {{config.ENV_VAR}} usando variables de entorno
+      if (trimmedPath.startsWith('config.')) {
+        const envVar = trimmedPath.replace(/^config\./, '');
+        return process.env[envVar] !== undefined ? process.env[envVar] : '';
+      }
+
+      const parts = trimmedPath.split('.');
       let current = state;
       
       for (const part of parts) {
         if (!current || current[part] === undefined) {
-          console.warn(`[Pipeline] Variable {{${path.trim()}}} no resuelta. Falta '${part}' en el estado.`);
+          console.warn(`[Pipeline] Variable {{${trimmedPath}}} no resuelta. Falta '${part}' en el estado.`);
           return match;
         }
         current = current[part];

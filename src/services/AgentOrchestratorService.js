@@ -108,14 +108,22 @@ class AgentOrchestratorService {
 
     } else if (triageResult.intent === 'WHATSAPP') {
       // AGENTE ESCALATION / WHATSAPP HANDOFF
-      const phone = bot.channels?.whatsapp?.phoneNumber || '573219662703';
-      const cleanPhone = phone.replace(/[^0-9]/g, '');
-      const encodedText = encodeURIComponent(`Hola Oferty, estuve hablando con el asistente en la web. Mi consulta es: "${message}"`);
-      const waUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
+      if (channel === 'whatsapp') {
+        // Si el usuario ya está chateando desde WhatsApp
+        const agentPhone = bot.channels?.whatsapp?.agentPhoneNumber || bot.channels?.whatsapp?.phoneNumber || '573219662703';
+        reply = `¡Con gusto! Puedes comunicarte con uno de nuestros asesores especializados escribiendo o llamando al +${agentPhone}. En breve un asesor humano también podrá revisar esta conversación.`;
+        action = 'HUMAN_HANDOFF';
+        actionData = { agentPhone };
+      } else {
+        const phone = bot.channels?.whatsapp?.phoneNumber || '573219662703';
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const encodedText = encodeURIComponent(`Hola ${bot.name}, estuve hablando con el asistente en la web. Mi consulta es: "${message}"`);
+        const waUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
 
-      reply = `¡Por supuesto! Puedes contactar a nuestro equipo de atención directamente por WhatsApp (+57 321 966 2703).`;
-      action = 'OPEN_WHATSAPP';
-      actionData = { url: waUrl, phoneNumber: cleanPhone };
+        reply = `¡Por supuesto! Puedes contactar a nuestro equipo de atención directamente por WhatsApp (+${cleanPhone}).`;
+        action = 'OPEN_WHATSAPP';
+        actionData = { url: waUrl, phoneNumber: cleanPhone };
+      }
 
     } else if (triageResult.intent === 'GIFT_ADVICE' || mode === 'gift_advisor') {
       const giftRes = await this.handleGiftAdvisor({
