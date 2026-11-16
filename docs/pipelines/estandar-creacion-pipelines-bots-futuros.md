@@ -184,15 +184,50 @@ module.exports = PipelineProvisioningService;
 
 ---
 
-## 5. Checklist para Activar una Nueva Empresa / Sucursal
+## 5. Gestión Requerida en Meta (Facebook / WhatsApp Business Manager)
 
-1. **Registrar el número en Meta:**
-   - En Meta Developers / Business Manager, agregar el nuevo número de la empresa o sucursal y copiar su `Phone Number ID`.
-2. **Crear el Bot en ScraperLab:**
-   - Asignar `botId`, `clientId`, `name` y el `Phone Number ID` en `channels.whatsapp`.
-3. **Cargar la Base de Conocimiento (RAG):**
-   - Inyectar en `ScraperLab-BotKnowledge` el catálogo, FAQs o scrapeando la URL oficial de la empresa.
-4. **Pipeline Auto-provisionado:**
-   - El pipeline se genera automáticamente con el estándar canónico de 3 nodos.
-5. **Listo para Producción:**
-   - Todo cliente que escriba a ese número nuevo hablará exclusivamente con la IA de esa empresa, con memoria persistente y sin cruce de información.
+Cada vez que incorpores una nueva empresa o sucursal a ScraperLab, estos son los pasos puntuales y exactos a realizar en el ecosistema de Meta:
+
+### Escenario A: El cliente usará un número administrado bajo la cuenta de ScraperLabs (Recomendado)
+*(Ideal cuando ScraperLabs provee la solución integral como servicio llave en mano)*:
+
+1. **Agregar el número al Administrador de WhatsApp:**
+   - Ir a [business.facebook.com/wa/manage/phone-numbers/](https://business.facebook.com/wa/manage/phone-numbers/).
+   - Asegurarte de estar en el Portfolio Comercial de **ScraperLabs**.
+   - Clic en el botón azul **"Agregar número de teléfono"**.
+2. **Asignar Nombre Visible para Clientes:**
+   - Nombre de la empresa o sucursal (ej: `Caribe Partes Barranquilla`, `Óptica Santa Lucía`).
+   - Categoría comercial (Automotriz, Salud, etc.).
+3. **Verificación del Número:**
+   - Ingresar el número de teléfono con prefijo de país (`+57`).
+   - Elegir verificación por **SMS** o **Llamada telefónica**.
+   - Digitar el código de 6 dígitos que llegue a ese teléfono.
+4. **Copiar el `Phone Number ID`:**
+   - Una vez figure en estado **Conectado** (en verde), hacer clic sobre el número o en el ícono de engranaje ⚙️.
+   - Copiar el **Identificador de número de teléfono (Phone Number ID)** (número de ~16 dígitos).
+   - *Nota:* Como ya tienes configurado el Webhook global (`api.scraperlabs.com.co/api/whatsapp/webhook`) y el Token Permanente de Sistema, **NO necesitas crear una App nueva ni volver a configurar webhooks**.
+
+---
+
+### Escenario B: El cliente tiene su propio Meta Business Manager
+*(Ideal para corporativos grandes que exigen que la línea y facturación de Meta queden bajo su propio RUT/empresa)*:
+
+1. El cliente crea su App en [developers.facebook.com](https://developers.facebook.com/) con el producto **WhatsApp**.
+2. En **WhatsApp > Configuración > Webhooks**, configuran la URL de ScraperLabs:
+   - **URL de callback:** `https://api.scraperlabs.com.co/api/whatsapp/webhook/{botId}`
+   - **Token de verificación:** `scraperlabs_whatsapp_verify_token`
+   - **Campos suscritos:** `messages`.
+3. El cliente genera un Token de Usuario del Sistema permanente con permiso `whatsapp_business_messaging` y te entrega:
+   - Su `Phone Number ID`.
+   - Su `Access Token`.
+4. En ScraperLab, esos dos datos se pegan en la configuración particular de su bot (`channels.whatsapp.phoneNumberId` y `channels.whatsapp.accessToken`).
+
+---
+
+## 6. Checklist de Puesta en Marcha (Resumen Ejecutivo)
+
+1. **Meta:** Registrar número $\rightarrow$ Copiar `Phone Number ID`.
+2. **ScraperLab Backend / Web:** Crear Bot en `POST /api/bots` o panel de administración con ese `Phone Number ID`.
+3. **RAG:** Cargar productos, catálogo y preguntas frecuentes en `ScraperLab-BotKnowledge`.
+4. **Pipeline:** El pipeline se crea automáticamente con el patrón de 3 nodos (`whatsapp-trigger` $\rightarrow$ `AI_PROMPT` $\rightarrow$ `whatsapp-response`).
+5. **Listo:** Cualquier cliente que escriba a ese número recibe atención inmediata con inteligencia artificial y catálogo en tiempo real.
