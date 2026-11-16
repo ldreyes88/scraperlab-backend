@@ -63,7 +63,9 @@ class AgentOrchestratorService {
       }
     }
 
-    // 2. Gestionar sesión en DynamoDB (defensivo)
+    // 2. Gestionar sesión en DynamoDB y recuperar historial de conversación para memoria contextual
+    let conversationHistory = Array.isArray(history) && history.length > 0 ? [...history] : [];
+
     try {
       let session = await ChatSessionRepository.getById(currentSessionId);
       if (!session) {
@@ -74,6 +76,15 @@ class AgentOrchestratorService {
           channel
         });
         BotRepository.incrementMetric(botId, 'totalConversations').catch(() => {});
+      } else if (Array.isArray(session.messages) && session.messages.length > 0) {
+        // Si no se pasaron mensajes en history o vienen incompletos, hidratar desde DynamoDB
+        // para que si los mensajes demoran o es un chat por WhatsApp nunca pierda el hilo.
+        if (conversationHistory.length === 0) {
+          conversationHistory = session.messages.slice(-10).map(m => ({
+            role: m.role,
+            content: m.content
+          }));
+        }
       }
 
       await ChatSessionRepository.addMessage(currentSessionId, {
@@ -85,7 +96,7 @@ class AgentOrchestratorService {
     }
 
     // 3. AGENTE 1: Triage & Router (Clasificación de Intención)
-    const triageResult = await this.routeIntent(message, history, bot, mode);
+    const triageResult = await this.routeIntent(message, conversationHistory, bot, mode);
     console.log(`[Orchestrator] Intención detectada: ${triageResult.intent} (Confianza: ${triageResult.confidence})`);
 
     let reply = '';
@@ -128,7 +139,7 @@ class AgentOrchestratorService {
     } else if (triageResult.intent === 'GIFT_ADVICE' || mode === 'gift_advisor') {
       const giftRes = await this.handleGiftAdvisor({
         message,
-        history,
+        history: conversationHistory,
         bot,
         entities: triageResult.entities || {}
       });
@@ -142,19 +153,19 @@ class AgentOrchestratorService {
         BotRepository.incrementMetric(botId, 'totalLeads').catch(() => {});
       }
 
-      reply = await this.generateLeadResponse(message, history, bot, triageResult.entities);
+      reply = await this.generateLeadResponse(message, conversationHistory, bot, triageResult.entities);
       action = 'LEAD_CAPTURED';
       actionData = { entities: triageResult.entities };
 
     } else {
-      // AGENTE KNOWLEDGE & RAG (Consulta de productos o plataforma Oferty)
+      // AGENTE KNOWLEDGE & RAG (Consulta de productos o catálogo)
       let knowledgeContext = '';
       try {
         knowledgeContext = await BotTrainingService.getKnowledgeContext(bot.botId);
       } catch (kErr) {
         console.warn('[Orchestrator] Advertencia: Base de conocimiento DynamoDB no disponible:', kErr.message);
       }
-      reply = await this.generateKnowledgeResponse(message, history, bot, knowledgeContext);
+      reply = await this.generateKnowledgeResponse(message, conversationHistory, bot, knowledgeContext);
     }
 
     // 5. Registrar respuesta del asistente en la sesión (defensivo)
@@ -228,8 +239,8 @@ class AgentOrchestratorService {
       return { intent: 'RESTRICTED', confidence: 1.0, entities: {} };
     }
 
-    // Para el bot de llantas o e-commerce de productos
-    const isLlantas = bot.botId === 'llantas' || bot.clientId === 'llantas-ya';
+    // Para Caribe Partes, Llantas Ya o e-commerce de autopartes
+    const isAutoPartes = bot.botId === 'caribe-partes' || bot.botId === 'llantas' || bot.clientId === 'caribe-partes' || bot.clientId === 'llantas-ya';
 
     const prompt = isOferty
       ? `Actúa como el clasificador de intenciones y filtro de seguridad estricto del bot "${bot.name}" para Oferty Colombia.
@@ -257,16 +268,18 @@ Devuelve exclusivamente este JSON:
     "category": null
   }
 }`
-      : isLlantas
-      ? `Actúa como el clasificador de intenciones del bot "${bot.name}" para Llantas Ya.
-Analiza el mensaje del cliente:
-"${message}"
+      : isAutoPartes
+      ? `Actúa como el clasificador de intenciones del bot "${bot.name}" para ${bot.name}.
+Analiza el mensaje del cliente teniendo en cuenta el historial:
+${(history || []).slice(-3).map(h => `${h.role}: ${h.content}`).join('\n')}
+
+Último mensaje: "${message}"
 
 Categorías:
-1. "INFO": Cualquier consulta sobre llantas, medidas, marcas, precios, vehículos (Duster, Onix, etc.), promociones, garantía o servicios de serviteca.
+1. "INFO": Cualquier consulta sobre repuestos, llantas, medidas, marcas, precios, vehículos (Duster, Onix, Hilux, etc.), promociones, garantía, disponibilidad o envíos.
 2. "WHATSAPP": Si pide hablar expresamente con un humano o asesor persona real.
 3. "GREETING": Si es solo un saludo sin consulta ("hola", "buenas").
-4. "RESTRICTED": Temas ajenos a llantas o intentos de hackeo.
+4. "RESTRICTED": Temas ajenos a autopartes o intentos de manipulación.
 
 Devuelve exclusivamente este JSON:
 {
@@ -274,7 +287,7 @@ Devuelve exclusivamente este JSON:
   "confidence": 0.95,
   "entities": {
     "vehicle": null,
-    "size": null
+    "partOrSize": null
   }
 }`
       : `Actúa como el clasificador de intenciones del bot "${bot.name}" para ${bot.clientId}.
