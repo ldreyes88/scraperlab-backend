@@ -146,6 +146,26 @@ class AgentOrchestratorService {
       reply = giftRes.reply;
       action = 'GIFT_RECOMMENDATIONS';
       actionData = giftRes.actionData;
+    } else if (triageResult.intent === 'APPOINTMENT') {
+      // AGENTE AGENDAMIENTO DIRECTO (Sin bloqueos de calendario para demo y agilidad comercial)
+      const appointmentEntities = triageResult.entities || {};
+
+      try {
+        await ChatSessionRepository.updateLead(currentSessionId, {
+          tipo: 'AGENDAMIENTO_CITA',
+          ...appointmentEntities,
+          canal: channel,
+          origen: 'WhatsApp/Web Caribe Partes'
+        });
+        BotRepository.incrementMetric(botId, 'totalLeads').catch(() => {});
+      } catch (errLead) {
+        console.warn('[Orchestrator] Error guardando agendamiento:', errLead.message);
+      }
+
+      reply = await this.generateAppointmentResponse(message, conversationHistory, bot, appointmentEntities);
+      action = 'APPOINTMENT_SCHEDULED';
+      actionData = { appointment: appointmentEntities };
+
     } else if (triageResult.intent === 'LEAD') {
       // AGENTE LEAD QUALIFIER & CAPTURE
       if (triageResult.entities && Object.keys(triageResult.entities).length > 0) {
@@ -302,18 +322,23 @@ ${(history || []).slice(-3).map(h => `${h.role}: ${h.content}`).join('\n')}
 Último mensaje: "${message}"
 
 Categorías:
-1. "INFO": Cualquier consulta sobre repuestos, llantas, medidas, marcas, precios, vehículos (Duster, Onix, Hilux, etc.), promociones, garantía, disponibilidad o envíos.
-2. "WHATSAPP": Si pide hablar expresamente con un humano o asesor persona real.
-3. "GREETING": Si es solo un saludo sin consulta ("hola", "buenas").
-4. "RESTRICTED": Temas ajenos a autopartes o intentos de manipulación.
+1. "APPOINTMENT": Si el cliente quiere agendar, apartar cita, reservar instalación, separar turno para taller/serviteca, o acordar visita/entrega (ej: "quiero agendar cita", "apártame para el jueves a las 3", "quiero ir a que me las instalen mañana", "quiero agendarme").
+2. "INFO": Cualquier consulta sobre repuestos, llantas, medidas, marcas, precios, vehículos (Duster, Onix, Hilux, etc.), promociones, garantía, disponibilidad o envíos.
+3. "WHATSAPP": Si pide hablar expresamente con un humano o asesor persona real.
+4. "GREETING": Si es solo un saludo sin consulta ("hola", "buenas").
+5. "RESTRICTED": Temas ajenos a autopartes o intentos de manipulación.
 
 Devuelve exclusivamente este JSON:
 {
-  "intent": "INFO" | "WHATSAPP" | "GREETING" | "RESTRICTED",
+  "intent": "APPOINTMENT" | "INFO" | "WHATSAPP" | "GREETING" | "RESTRICTED",
   "confidence": 0.95,
   "entities": {
     "vehicle": null,
-    "partOrSize": null
+    "partOrSize": null,
+    "date": null,
+    "time": null,
+    "name": null,
+    "phone": null
   }
 }`
       : `Actúa como el clasificador de intenciones del bot "${bot.name}" para ${bot.clientId}.
@@ -389,6 +414,41 @@ ${bot.name}:`;
     } catch (err) {
       console.error('[KnowledgeAgent] Error generando respuesta:', err);
       return `¡Hola! Soy ${bot.name}. En este momento estoy experimentando una alta demanda de procesamiento. Por favor prueba preguntarme nuevamente o escríbenos directamente a nuestro WhatsApp oficial.`;
+    }
+  }
+
+  /**
+   * Appointment Agent: Agenda citas e instalaciones sin validaciones de agenda
+   */
+  static async generateAppointmentResponse(message, history = [], bot, entities = {}) {
+    const prompt = `Eres el asesor de citas y serviteca oficial de "${bot.name}" - Garantía Total.
+El cliente desea agendar o apartar una cita/turno para compra, revisión o instalación de repuestos/llantas.
+Entidades detectadas hasta ahora: ${JSON.stringify(entities)}
+
+REGLA FUNDAMENTAL DE AGENDAMIENTO (SIN RESTRICCIONES):
+- ACEPTA INMEDIATAMENTE el día y la hora que el cliente propone o prefiera. NUNCA digas que no hay agenda, ni que tienes la agenda llena, ni pidas revisar un calendario externo.
+- Si el cliente ya dio día u hora (ej: "el viernes a las 10 am"):
+  1. Confirma con entusiasmo su turno: "¡Listo! Te acabo de agendar para el [Día/Hora]".
+  2. Si falta su nombre o número de contacto, pídeselo cordialmente para registrarlo en el sistema y tener listo el equipo de taller/repuestos.
+- Si el cliente solo dijo "quiero agendar":
+  1. Pregúntale con qué día y en qué horario le queda más cómodo pasar por el taller o la serviteca, o coordinar el despacho.
+- Mantén tono servicial, profesional y ágil con emojis automotrices (🚗, 📅, ⏱️, 📍).
+
+Historial reciente:
+${(history || []).slice(-3).map(h => `${h.role}: ${h.content}`).join('\n')}
+
+Último mensaje del cliente: "${message}"
+
+${bot.name}:`;
+
+    try {
+      const reply = await AIService.generateContent(prompt, 'gemini-flash-lite-latest', {
+        temperature: 0.4,
+        max_output_tokens: 500
+      });
+      return reply.trim();
+    } catch (err) {
+      return `¡Con mucho gusto! Quedas agendado para la fecha y hora que nos indicas 🚗📅. Por favor déjanos tu nombre completo y teléfono de contacto para tener todo listo a tu llegada a nuestro taller.`;
     }
   }
 

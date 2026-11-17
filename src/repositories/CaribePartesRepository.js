@@ -76,7 +76,6 @@ class CaribePartesRepository {
       .replace(/[^a-z0-9]/g, '')
       .trim();
 
-    // Reducción básica de plurales comunes
     if (w.endsWith('as') || w.endsWith('os') || w.endsWith('es')) {
       if (w.endsWith('es')) w = w.slice(0, -2);
       else w = w.slice(0, -1);
@@ -85,27 +84,42 @@ class CaribePartesRepository {
   }
 
   /**
+   * Extrae los términos vehiculares y de repuesto con alta prioridad semántica
+   */
+  static extractMeaningfulTerms(text) {
+    const conversationalNoise = new Set([
+      'cuanto', 'cuanta', 'cuantos', 'cuantas', 'salen', 'sale', 'vale', 'valen',
+      'cuesta', 'cuestan', 'precio', 'costo', 'valor', 'buenas', 'tardes', 'dias',
+      'noches', 'hola', 'amigo', 'favor', 'porfa', 'tienes', 'tienen', 'habra',
+      'hay', 'necesito', 'busco', 'para', 'con', 'del', 'los', 'las', 'un', 'una',
+      'unos', 'unas', 'que', 'como', 'donde', 'cuando', 'quien', 'por', 'sobre'
+    ]);
+
+    const words = (text || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 2 && !conversationalNoise.has(w));
+
+    return Array.from(new Set(words.map(w => this.normalizeAndStem(w)).filter(w => w.length >= 2)));
+  }
+
+  /**
    * Búsqueda inteligente iterando páginas completas hasta recolectar candidatos relevantes
    */
   static async searchProducts({ query = '', vehicle = '', partType = '', limit = 5 }) {
     const TABLE_NAME = TABLES.CARIBE_PARTES_PRODUCTS;
 
-    const stopWords = new Set(['de', 'la', 'el', 'en', 'para', 'con', 'del', 'los', 'las', 'un', 'una', 'por', 'a', 'y', 'tienes', 'tienen', 'precio', 'costo', 'valor']);
-    const rawTokens = `${query} ${vehicle} ${partType}`
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .split(/\s+/)
-      .filter(t => t.length >= 2 && !stopWords.has(t));
-
-    // Obtener términos con lematización
-    const terms = Array.from(new Set(rawTokens.map(t => this.normalizeAndStem(t)).filter(t => t.length >= 2)));
+    // Extraer términos significativos del query, vehicle y partType
+    const fullText = `${query} ${vehicle} ${partType}`;
+    const terms = this.extractMeaningfulTerms(fullText);
 
     if (terms.length === 0) {
       return [];
     }
 
-    // 1. Si uno de los términos parece ser un código alfanumérico largo
+    // 1. Si uno de los tokens parece código de producto directo
+    const rawTokens = fullText.split(/\s+/).map(t => t.replace(/[^a-zA-Z0-9]/g, ''));
     for (const raw of rawTokens) {
       if (raw.length >= 5 && /\d/.test(raw)) {
         const directMatches = await this.getByCode(raw);
@@ -115,7 +129,23 @@ class CaribePartesRepository {
       }
     }
 
-    // 2. Priorizar los 2 términos clave más significativos (ej: vehículo + repuesto)
+    // 2. Priorizar los 2 términos más distintivos (ej: 'pastilla', 'logan')
+    // Los vehículos y partes automotrices comunes tienen la mayor prioridad
+    const autoKeywords = new Set([
+      'pastilla', 'freno', 'filtro', 'rotula', 'amortiguador', 'tijera', 'buje', 'balinera',
+      'disco', 'correa', 'bomba', 'bobina', 'bujia', 'aceite', 'llanta', 'empaque',
+      'duster', 'logan', 'sandero', 'hilux', 'prado', 'onix', 'spark', 'aveo', 'sail',
+      'tucson', 'sportage', 'picanto', 'rio', 'kwid', 'stepway', 'cx5', 'mazda', 'renault',
+      'chevrolet', 'toyota', 'hyundai', 'kia', 'nissan'
+    ]);
+
+    // Ordenar términos: los automotrices van primero
+    terms.sort((a, b) => {
+      const aIsAuto = autoKeywords.has(a) ? 1 : 0;
+      const bIsAuto = autoKeywords.has(b) ? 1 : 0;
+      return bIsAuto - aIsAuto;
+    });
+
     const keyTerms = terms.slice(0, 2);
 
     const filterExpressions = keyTerms.map((term, idx) => `contains(searchText, :term${idx})`);
@@ -139,12 +169,12 @@ class CaribePartesRepository {
         const result = await dynamoDB.send(new ScanCommand(params));
         if (result.Items && result.Items.length > 0) {
           candidates.push(...result.Items);
-          if (candidates.length >= 20) break;
+          if (candidates.length >= 25) break;
         }
         lastEvaluatedKey = result.LastEvaluatedKey;
       } while (lastEvaluatedKey);
 
-      // Si no hubo coincidencia estricta y eran 2 términos, intentamos con OR
+      // Si no hubo coincidencia con AND y hay más de 1 término
       if (candidates.length === 0 && keyTerms.length > 1) {
         lastEvaluatedKey = undefined;
         do {
@@ -158,7 +188,7 @@ class CaribePartesRepository {
           const result = await dynamoDB.send(new ScanCommand(params));
           if (result.Items && result.Items.length > 0) {
             candidates.push(...result.Items);
-            if (candidates.length >= 20) break;
+            if (candidates.length >= 25) break;
           }
           lastEvaluatedKey = result.LastEvaluatedKey;
         } while (lastEvaluatedKey);
@@ -190,7 +220,6 @@ class CaribePartesRepository {
       return { item, score };
     });
 
-    // Eliminar posibles duplicados
     const uniqueMap = new Map();
     scored.sort((a, b) => b.score - a.score);
 
