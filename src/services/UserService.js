@@ -44,6 +44,7 @@ class UserService {
       userId: userData.userId, // Cognito sub
       email: userData.email,
       role: userData.role || 'user',
+      hasEnterpriseAccess: userData.hasEnterpriseAccess === true,
       metadata: userData.metadata || {}
     });
 

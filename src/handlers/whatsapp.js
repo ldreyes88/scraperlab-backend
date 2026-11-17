@@ -43,10 +43,13 @@ exports.handleWebhook = async (req, res, next) => {
     const { botId } = req.params;
     const payload = req.body;
 
+    console.log('[WhatsApp Webhook] Payload recibido:', JSON.stringify(payload));
+
     // En AWS Lambda NO podemos dejar promesas flotantes en segundo plano
     // porque el runtime congela el contenedor al responder. Esperamos el procesamiento:
     try {
-      await WhatsAppService.handleIncomingWebhook(payload, botId);
+      const result = await WhatsAppService.handleIncomingWebhook(payload, botId);
+      console.log('[WhatsApp Webhook] Resultado de procesamiento:', JSON.stringify(result));
     } catch (err) {
       console.error('[WhatsApp Webhook Error] Falló procesamiento de mensaje entrante:', err);
     }

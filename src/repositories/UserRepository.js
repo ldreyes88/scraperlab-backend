@@ -74,6 +74,7 @@ class UserRepository {
       userId: userData.userId, // Cognito sub
       email: userData.email,
       role: userData.role || 'user',
+      hasEnterpriseAccess: userData.hasEnterpriseAccess === true,
       isActive: userData.isActive !== undefined ? userData.isActive : true,
       createdAt: now,
       updatedAt: now,
@@ -109,7 +110,7 @@ class UserRepository {
     };
 
     // Campos permitidos para actualizar
-    const allowedFields = ['role', 'isActive', 'metadata', 'apiKey', 'apiKeyLastUsed'];
+    const allowedFields = ['role', 'hasEnterpriseAccess', 'isActive', 'metadata', 'apiKey', 'apiKeyLastUsed'];
     
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {

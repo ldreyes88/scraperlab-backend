@@ -95,7 +95,7 @@ const getUser = async (req, res) => {
  */
 const createUser = async (req, res) => {
   try {
-    const { email, password, role, metadata } = req.body;
+    const { email, password, role, hasEnterpriseAccess, metadata } = req.body;
 
     // Validaciones
     if (!email || !password) {
@@ -127,6 +127,7 @@ const createUser = async (req, res) => {
       userId: cognitoResult.userSub,
       email,
       role: userRole,
+      hasEnterpriseAccess: hasEnterpriseAccess === true,
       metadata
     });
 
