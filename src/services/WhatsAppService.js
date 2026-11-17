@@ -38,7 +38,10 @@ class WhatsAppService {
       throw new Error('Parámetros "to" y "text" son obligatorios para enviar mensaje por WhatsApp');
     }
 
-    const cleanTo = String(to).replace(/\D/g, ''); // Solo dígitos
+    // Si es un user_id de WhatsApp (ej: "CO.1664368808670870"), se envía tal cual.
+    // Si es un número telefónico tradicional, dejamos únicamente los dígitos.
+    const isUserId = typeof to === 'string' && to.includes('.');
+    const cleanTo = isUserId ? to.trim() : String(to).replace(/\D/g, '');
     const credentials = this.getWhatsAppCredentials(bot);
 
     if (!credentials.phoneNumberId || !credentials.accessToken) {
@@ -107,9 +110,12 @@ class WhatsAppService {
     }
 
     const messageObj = value.messages[0];
-    const fromNumber = messageObj.from; // Número del cliente que escribe
+    // Meta v21+ puede enviar el número en `from` o un identificador de usuario `from_user_id` / `user_id`
+    // cuando el usuario tiene configurada privacidad por Username.
+    const contactObj = value.contacts?.[0] || {};
+    const fromNumber = messageObj.from || contactObj.wa_id || messageObj.from_user_id || contactObj.user_id;
     const businessPhoneNumberId = value.metadata?.phone_number_id; // ID del número receptor de la empresa
-    const contactName = value.contacts?.[0]?.profile?.name || '';
+    const contactName = contactObj.profile?.name || contactObj.profile?.username || '';
 
     // Extraer texto según tipo de mensaje
     let userText = '';
