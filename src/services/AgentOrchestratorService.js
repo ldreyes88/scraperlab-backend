@@ -387,6 +387,11 @@ Devuelve exclusivamente este JSON:
   static async generateKnowledgeResponse(message, history = [], bot, knowledgeContext = '') {
     let basePrompt = bot.systemPrompt || BotTrainingService.buildSystemPrompt(bot, knowledgeContext);
 
+    // Inyectar el inventario determinista al prompt base para que el modelo lo respete
+    if (knowledgeContext && knowledgeContext.includes('RESULTADOS DETERMINISTAS DE INVENTARIO')) {
+      basePrompt += `\n\n${knowledgeContext}\n\nIMPORTANTE DE PRECIOS: Si en el historial anterior se dijeron precios errados o aproximados, CORRÍGELOS usando EXCLUSIVAMENTE los PRECIOS REALES de la tabla de arriba. NUNCA repitas $145.000 ni inventes marcas que no están en la tabla.`;
+    }
+
     // Inyección de seguridad de último nivel si hideArchitecture o restrictOffTopic están activos
     if (!basePrompt.includes('REGLAS ESTRICTAS DE SEGURIDAD')) {
       basePrompt += `\n\nREGLAS ESTRICTAS DE SEGURIDAD, DOMINIO Y CONFIDENCIALIDAD (OBLIGATORIAS):
