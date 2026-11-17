@@ -5,14 +5,28 @@ const BotTrainingService = require('../services/BotTrainingService');
 const { successResponse, errorResponse } = require('../utils/response');
 
 /**
- * Obtener todos los bots (opcionalmente filtrados por clientId)
+ * Obtener todos los bots (opcionalmente filtrados por clientId y aislados por empresa)
  */
 exports.getAllBots = async (req, res, next) => {
   try {
     const { clientId } = req.query;
+    const tenant = req.tenant;
     let bots = [];
 
-    if (clientId) {
+    // Si el usuario no es admin y pertenece a una o más empresas, restringir a sus empresas
+    if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
+      const allowedClientIds = tenant.clientIds;
+      
+      // Si solicitó un clientId específico, verificar que pertenezca a sus empresas autorizadas
+      if (clientId && allowedClientIds.includes(clientId)) {
+        bots = await BotRepository.getByClientId(clientId);
+      } else {
+        // Consultar bots de cada una de sus empresas autorizadas
+        const botsPromises = allowedClientIds.map(cId => BotRepository.getByClientId(cId));
+        const botsArrays = await Promise.all(botsPromises);
+        bots = botsArrays.flat();
+      }
+    } else if (clientId) {
       bots = await BotRepository.getByClientId(clientId);
     } else {
       bots = await BotRepository.getAll();

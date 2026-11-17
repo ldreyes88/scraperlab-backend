@@ -160,8 +160,34 @@ class AgentOrchestratorService {
     } else {
       // AGENTE KNOWLEDGE & RAG (Consulta de productos o catálogo)
       let knowledgeContext = '';
+
+      if (bot.botId === 'caribe-partes' || bot.clientId === 'caribe-partes') {
+        const CaribePartesRepository = require('../repositories/CaribePartesRepository');
+        const searchEntities = triageResult.entities || {};
+        const matchedProducts = await CaribePartesRepository.searchProducts({
+          query: message,
+          vehicle: searchEntities.vehicle || '',
+          partType: searchEntities.partOrSize || '',
+          limit: 4
+        });
+
+        if (matchedProducts.length > 0) {
+          knowledgeContext = `\n\n=== RESULTADOS DETERMINISTAS DE INVENTARIO (TABLA DYNAMODB - DATOS 100% REALES) ===
+Usa OBLIGATORIAMENTE estos datos para responder al cliente sobre precios y disponibilidad. NO inventes otros precios.
+${matchedProducts.map(p => `- REF/CÓDIGO: ${p.codigo}
+  PRODUCTO: ${p.nombreOriginal}
+  MARCA: ${p.marca} | GRUPO: ${p.grupo}
+  PRECIO REAL: ${p.precioFormato}
+  STOCK FÍSICO: ${p.stockTotal} unidad(es) (${p.disponible ? 'Disponible para entrega inmediata' : 'Disponible bajo pedido'})`).join('\n\n')}
+========================================================================================`;
+        }
+      }
+
       try {
-        knowledgeContext = await BotTrainingService.getKnowledgeContext(bot.botId);
+        const standardContext = await BotTrainingService.getKnowledgeContext(bot.botId);
+        if (standardContext) {
+          knowledgeContext = `${knowledgeContext}\n\n${standardContext}`.trim();
+        }
       } catch (kErr) {
         console.warn('[Orchestrator] Advertencia: Base de conocimiento DynamoDB no disponible:', kErr.message);
       }

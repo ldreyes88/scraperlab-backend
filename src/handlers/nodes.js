@@ -3,11 +3,20 @@ const NodeRepository = require('../repositories/NodeRepository');
 
 /**
  * Obtener todos los nodos del catálogo con soporte de filtros (clientId, category, type)
+ * y aislamiento para empresas (nodos de su empresa + nodos globales/compartidos).
  */
 exports.getAllNodes = async (req, res, next) => {
   try {
     const { clientId, category, type } = req.query;
-    const nodes = await NodeRepository.getAll({ clientId, category, type });
+    const tenant = req.tenant;
+
+    let nodes = await NodeRepository.getAll({ clientId, category, type });
+
+    if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
+      nodes = nodes.filter(
+        n => tenant.clientIds.includes(n.clientId) || n.clientId === 'global' || n.isShared || !n.clientId
+      );
+    }
 
     res.json({
       success: true,

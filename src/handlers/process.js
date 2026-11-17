@@ -4,12 +4,18 @@ exports.getLogs = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
-    // IMPORTANTE: Si es api_user o user (externo), forzamos el filtrado por su propio userId
-    // Esto asegura que Oferty solo vea sus propios procesos.
+    const tenant = req.tenant;
+
+    // Si es un usuario empresarial, filtrar por sus clientIds o userId
     let userId = req.query.userId;
-    if (req.user && req.user.role !== 'admin') {
+    let allowedClientIds = null;
+
+    if (tenant && !tenant.isAdmin) {
+      if (tenant.isEnterprise) {
+        allowedClientIds = tenant.clientIds;
+      }
       userId = req.user.userId;
-      console.log(`[Process Handler] Filtrado forzado de userId ${userId} para rol ${req.user.role}`);
+      console.log(`[Process Handler] Filtrado forzado para rol ${req.user.role}, tenant clientIds:`, allowedClientIds);
     }
 
     const processType = req.query.processType; // Ahora acepta 'pipeline,product_monitoring'
@@ -25,7 +31,10 @@ exports.getLogs = async (req, res, next) => {
 
     // Si no hay paginación, usar método antiguo para retrocompatibilidad
     if (!req.query.page) {
-      const logs = await ProcessService.getRecentLogs(limit);
+      let logs = await ProcessService.getRecentLogs(limit);
+      if (allowedClientIds && allowedClientIds.length > 0) {
+        logs = logs.filter(l => allowedClientIds.includes(l.clientId) || l.userId === userId);
+      }
       return res.json({
         success: true,
         data: logs,
@@ -35,6 +44,7 @@ exports.getLogs = async (req, res, next) => {
 
     const result = await ProcessService.getPaginatedLogs(page, limit, {
       userId,
+      clientIds: allowedClientIds,
       processType,
       from,
       to,

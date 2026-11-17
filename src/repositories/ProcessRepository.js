@@ -239,8 +239,12 @@ class ProcessRepository {
       // FILTRAR EN MEMORIA (más confiable)
       let filteredItems = [...allItems];
 
-      // Filtro por userId (si se solicita explícitamente)
-      if (filters.userId) {
+      // Filtro por userId o clientIds (multi-tenant)
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        filteredItems = filteredItems.filter(
+          item => filters.clientIds.includes(item.clientId) || (filters.userId && item.userId === filters.userId)
+        );
+      } else if (filters.userId) {
         filteredItems = filteredItems.filter(item => item.userId === filters.userId);
       }
 

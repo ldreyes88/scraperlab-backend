@@ -1,6 +1,7 @@
 // src/handlers/chat.js
 const AgentOrchestratorService = require('../services/AgentOrchestratorService');
 const ChatSessionRepository = require('../repositories/ChatSessionRepository');
+const BotRepository = require('../repositories/BotRepository');
 
 /**
  * Enviar mensaje al bot (Endpoint público para widgets web y canales)
@@ -85,17 +86,29 @@ exports.getSession = async (req, res, next) => {
 };
 
 /**
- * Listar todas las sesiones y leads (Panel de administración global)
+ * Listar todas las sesiones y leads (Panel de administración global o filtrado por empresa)
  */
 exports.getAllSessions = async (req, res, next) => {
   try {
     const { botId, hasLead, limit = 100 } = req.query;
+    const tenant = req.tenant;
 
-    const sessions = await ChatSessionRepository.getAllSessions({
+    let sessions = await ChatSessionRepository.getAllSessions({
       botId: botId || null,
       hasLead: hasLead === 'true',
       limit: parseInt(limit, 10)
     });
+
+    // Si el usuario no es admin y pertenece a empresas, aislar sólo a las sesiones de sus empresas o bots
+    if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
+      // Obtener los bots de sus empresas para tener la lista de botIds autorizados
+      const botsArrays = await Promise.all(tenant.clientIds.map(cId => BotRepository.getByClientId(cId)));
+      const enterpriseBotIds = botsArrays.flat().map(b => b.botId);
+
+      sessions = sessions.filter(
+        s => tenant.clientIds.includes(s.clientId) || enterpriseBotIds.includes(s.botId)
+      );
+    }
 
     return res.json({
       success: true,

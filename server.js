@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const errorHandler = require('./src/middleware/errorHandler');
 const { verifyToken, requireRole, verifyAuth } = require('./src/middleware/auth');
+const { resolveTenant } = require('./src/middleware/tenant');
 
 // Importar handlers
 const scraperHandler = require('./src/handlers/scraper');
@@ -131,17 +132,17 @@ app.put('/api/domains/:domainId/provider', verifyToken, requireRole(['admin']), 
 app.post('/api/domains/validate', verifyToken, requireRole(['admin']), domainsHandler.validateConfig);
 app.put('/api/domains/:domainId/toggle', verifyToken, requireRole(['admin']), domainsHandler.toggleEnabled);
 
-// 🔗 Pipelines endpoints (solo admin)
-app.get('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler.getAllPipelines);
-app.get('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.getPipeline);
+// 🔗 Pipelines endpoints (admin y usuarios empresariales)
+app.get('/api/pipelines', verifyAuth, resolveTenant, pipelinesHandler.getAllPipelines);
+app.get('/api/pipelines/:pipelineId', verifyAuth, resolveTenant, pipelinesHandler.getPipeline);
 app.post('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler.createPipeline);
 app.put('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.updatePipeline);
 app.delete('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.deletePipeline);
 app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipeline);
 
 // 🧩 Reusable Nodes endpoints (catálogo de nodos independientes)
-app.get('/api/nodes', verifyAuth, nodesHandler.getAllNodes);
-app.get('/api/nodes/:nodeId', verifyAuth, nodesHandler.getNode);
+app.get('/api/nodes', verifyAuth, resolveTenant, nodesHandler.getAllNodes);
+app.get('/api/nodes/:nodeId', verifyAuth, resolveTenant, nodesHandler.getNode);
 app.post('/api/nodes', verifyToken, requireRole(['admin']), nodesHandler.createNode);
 app.put('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.updateNode);
 app.delete('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandler.deleteNode);
@@ -159,8 +160,8 @@ app.get('/api/whatsapp/webhook/:botId', whatsappHandler.verifyWebhook);
 app.post('/api/whatsapp/webhook/:botId', whatsappHandler.handleWebhook);
 app.post('/api/whatsapp/send', verifyAuth, whatsappHandler.sendMessage);
 
-app.get('/api/bots', verifyAuth, botsHandler.getAllBots);
-app.get('/api/bots/:botId', verifyAuth, botsHandler.getBot);
+app.get('/api/bots', verifyAuth, resolveTenant, botsHandler.getAllBots);
+app.get('/api/bots/:botId', verifyAuth, resolveTenant, botsHandler.getBot);
 app.get('/api/bots/:botId/knowledge', verifyAuth, botsHandler.getBotKnowledge);
 app.post('/api/bots/:botId/knowledge', verifyAuth, botsHandler.createKnowledgeItem);
 app.put('/api/bots/knowledge/:knowledgeId', verifyAuth, botsHandler.updateKnowledgeItem);
@@ -169,10 +170,10 @@ app.post('/api/bots', verifyAuth, botsHandler.createBot);
 app.put('/api/bots/:botId', verifyAuth, botsHandler.updateBot);
 app.delete('/api/bots/:botId', verifyAuth, botsHandler.deleteBot);
 app.post('/api/bots/:botId/train', verifyAuth, botsHandler.trainBot);
-app.get('/api/chat/sessions', verifyAuth, chatHandler.getAllSessions);
-app.get('/api/chat/bots/:botId/sessions', verifyAuth, chatHandler.getBotSessions);
+app.get('/api/chat/sessions', verifyAuth, resolveTenant, chatHandler.getAllSessions);
+app.get('/api/chat/bots/:botId/sessions', verifyAuth, resolveTenant, chatHandler.getBotSessions);
 
-app.get('/api/process', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
+app.get('/api/process', verifyAuth, resolveTenant, requireRole(['admin', 'user', 'api_user']), processHandler.getLogs);
 app.get('/api/process/:processId/details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
 app.get('/api/process/:processId/batch-details', verifyAuth, requireRole(['admin', 'user', 'api_user']), processHandler.getBatchDetails);
 app.get('/api/process/:processId/status', verifyAuth, processHandler.getProcessStatus);

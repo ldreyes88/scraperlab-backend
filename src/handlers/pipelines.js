@@ -4,7 +4,14 @@ const PipelineService = require('../services/PipelineService');
 
 exports.getAllPipelines = async (req, res, next) => {
   try {
-    const pipelines = await PipelineRepository.getAll();
+    let pipelines = await PipelineRepository.getAll();
+    const tenant = req.tenant;
+
+    // Si el usuario no es admin y pertenece a una empresa, filtrar estrictamente por su empresa
+    if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
+      pipelines = pipelines.filter(p => tenant.clientIds.includes(p.clientId));
+    }
+
     res.json({
       success: true,
       data: pipelines,
