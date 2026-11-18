@@ -678,8 +678,8 @@ Responde ÚNICAMENTE en JSON con este formato:
         const data = await res.json();
         if (Array.isArray(data.hits) && data.hits.length > 0) {
           const top = data.hits[0];
-          const price = toSafeNumber(top.pricevalue_cop_double || top.lowestprice_double, 0);
-          const origPrice = toSafeNumber(top.baseprice_cop_string, price);
+          const price = toSafeNumber(top.lowestprice_double || top.discountprice_double || top.pricevalue_cop_double, 0);
+          const origPrice = toSafeNumber(top.baseprice_cop_string || top.pricevalue_cop_double, price);
           if (price > 0 && (!maxBudget || price <= maxBudget * 1.35)) {
             products.push({
               name: top.name_text_es || query,

@@ -5,6 +5,7 @@ const ProcessDetailRepository = require('../repositories/ProcessDetailRepository
 const NodeRepository = require('../repositories/NodeRepository');
 const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
+const { calculateHomologyScore } = require('../utils/HomologyMatcher');
 const { nowColombiaISO } = require('../utils/time');
 
 class PipelineService {
@@ -788,10 +789,20 @@ class PipelineService {
       return Number.isFinite(n) ? n : fallback;
     };
 
+    // Datos base para evaluación de homología
+    const baseProductInfo = {
+      name: query,
+      price: toSafeNumber(state.input?.price || state.input?.currentPrice || 0),
+      brand: state.input?.brand || '',
+      category: state.input?.category || ''
+    };
+
     // Scraping en paralelo para todos los comercios seleccionados
     const promises = targetMarkets.map(async (marketKey) => {
       const key = marketKey.toLowerCase().replace(/[^a-z]/g, '');
       console.log(`[Hunter] Ejecutando búsqueda live para ${key} con término "${query}"...`);
+
+      let candidates = [];
 
       // 1. ÉXITO (Conector nativo VTEX ultrarrápido < 150ms)
       if (key === 'exito') {
@@ -820,27 +831,27 @@ class PipelineService {
             } catch (_) {}
           }
           if (items && items.length > 0) {
-            const top1 = items[0];
-            const price = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
-            const origPrice = toSafeNumber(top1.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
-            const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
-            const pName = top1.productName || query;
-            return {
-              marketplace: 'Éxito',
-              marketplaceName: 'Éxito',
-              store: 'Éxito',
-              domainId: 'exito.com',
-              name: pName,
-              productName: pName,
-              title: pName,
-              currentPrice: price,
-              originalPrice: origPrice,
-              discount,
-              url: top1.link || `https://www.exito.com/${top1.linkText}/p`,
-              image: top1.items?.[0]?.images?.[0]?.imageUrl || null,
-              position: 1,
-              success: true
-            };
+            candidates = items.slice(0, 5).map((item, idx) => {
+              const price = toSafeNumber(item.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
+              const origPrice = toSafeNumber(item.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
+              const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
+              const pName = item.productName || query;
+              return {
+                marketplace: 'Éxito',
+                marketplaceName: 'Éxito',
+                store: 'Éxito',
+                domainId: 'exito.com',
+                name: pName,
+                productName: pName,
+                title: pName,
+                currentPrice: price,
+                originalPrice: origPrice,
+                discount,
+                url: item.link || `https://www.exito.com/${item.linkText}/p`,
+                image: item.items?.[0]?.images?.[0]?.imageUrl || null,
+                position: idx + 1
+              };
+            });
           }
         } catch (err) {
           console.warn('[Hunter] Error en conector directo de Éxito:', err.message);
@@ -848,7 +859,7 @@ class PipelineService {
       }
 
       // 2. ALKOSTO / KTRONIX (Conector oficial Algolia Search < 100ms)
-      if (key === 'alkosto' || key === 'ktronix') {
+      else if (key === 'alkosto' || key === 'ktronix') {
         try {
           const appId = 'QX5IPS1B1Q';
           const apiKey = 'ODNiNzFhOTg5MWEyNWYxZGIyMmMyODFjYjNkMWU3NjVhNjUzYzgzZWUwMjkwODI3NmM4MDliNTY4OTEzODc5NCZmaWx0ZXJzPWF2YWlsYWJsZUJ1eUJ1dE5vdFZpc2libGVfYm9vbGVhbiUzQWZhbHNl';
@@ -862,38 +873,39 @@ class PipelineService {
               'X-Algolia-Application-Id': appId,
               'X-Algolia-API-Key': apiKey
             },
-            body: JSON.stringify({ query, hitsPerPage: 3 })
+            body: JSON.stringify({ query, hitsPerPage: 5 })
           });
 
           if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data.hits) && data.hits.length > 0) {
-              const top1 = data.hits[0];
-              const price = toSafeNumber(top1.pricevalue_cop_double || top1.lowestprice_double || top1.discountprice_double, 0);
-              const origPrice = toSafeNumber(top1.baseprice_cop_string, price);
-              const discount = toSafeNumber(top1.percentagediscount_string, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
               const host = key === 'ktronix' ? 'https://www.ktronix.com' : 'https://www.alkosto.com';
-              const pUrl = top1.url_es_string ? `${host}${top1.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
-              const pImg = top1['img-750wx750h_string'] || top1['img-310wx310h_string'] || top1['img-1400wx1400h_string'] || null;
               const storeName = key === 'ktronix' ? 'Ktronix' : 'Alkosto';
-              const pName = top1.name_text_es || query;
 
-              return {
-                marketplace: storeName,
-                marketplaceName: storeName,
-                store: storeName,
-                domainId: `${key}.com`,
-                name: pName,
-                productName: pName,
-                title: pName,
-                currentPrice: price,
-                originalPrice: origPrice,
-                discount,
-                url: pUrl,
-                image: pImg,
-                position: 1,
-                success: true
-              };
+              candidates = data.hits.map((hit, idx) => {
+                const price = toSafeNumber(hit.lowestprice_double || hit.discountprice_double || hit.pricevalue_cop_double, 0);
+                const origPrice = toSafeNumber(hit.baseprice_cop_string || hit.pricevalue_cop_double, price);
+                const discount = toSafeNumber(hit.percentagediscount_string, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
+                const pUrl = hit.url_es_string ? `${host}${hit.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
+                const pImg = hit['img-750wx750h_string'] || hit['img-310wx310h_string'] || hit['img-1400wx1400h_string'] || null;
+                const pName = hit.name_text_es || query;
+
+                return {
+                  marketplace: storeName,
+                  marketplaceName: storeName,
+                  store: storeName,
+                  domainId: `${key}.com`,
+                  name: pName,
+                  productName: pName,
+                  title: pName,
+                  currentPrice: price,
+                  originalPrice: origPrice,
+                  discount,
+                  url: pUrl,
+                  image: pImg,
+                  position: idx + 1
+                };
+              });
             }
           }
         } catch (err) {
@@ -902,44 +914,71 @@ class PipelineService {
       }
 
       // 3. MERCADO LIBRE / FALABELLA / OTROS (ScraperService Fallback)
-      const config = MARKETPLACE_CONFIGS[key];
-      if (!config) return null;
+      else {
+        const config = MARKETPLACE_CONFIGS[key];
+        if (!config) return null;
 
-      const searchUrl = config.searchUrl(query);
-      console.log(`[Hunter] Buscando vía ScraperService en ${config.name}: ${searchUrl}`);
+        const searchUrl = config.searchUrl(query);
+        console.log(`[Hunter] Buscando vía ScraperService en ${config.name}: ${searchUrl}`);
 
-      try {
-        const scrapeRes = await ScraperService.scrapeUrl(searchUrl, true, 'search');
-        if (scrapeRes && scrapeRes.success && Array.isArray(scrapeRes.data?.results) && scrapeRes.data.results.length > 0) {
-          // Tomar la primera posición (Top 1)
-          const top1 = scrapeRes.data.results[0];
-          const price = toSafeNumber(top1.currentPrice || top1.price, 0);
-          const origPrice = toSafeNumber(top1.originalPrice || top1.price, price);
-          const discount = toSafeNumber(top1.discount, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
-          const pName = top1.title || top1.name || query;
+        try {
+          const scrapeRes = await ScraperService.scrapeUrl(searchUrl, true, 'search');
+          if (scrapeRes && scrapeRes.success && Array.isArray(scrapeRes.data?.results) && scrapeRes.data.results.length > 0) {
+            candidates = scrapeRes.data.results.slice(0, 5).map((res, idx) => {
+              const price = toSafeNumber(res.currentPrice || res.price, 0);
+              const origPrice = toSafeNumber(res.originalPrice || res.price, price);
+              const discount = toSafeNumber(res.discount, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
+              const pName = res.title || res.name || query;
 
-          return {
-            marketplace: config.name,
-            marketplaceName: config.name,
-            store: config.name,
-            domainId: config.domainId,
-            name: pName,
-            productName: pName,
-            title: pName,
-            currentPrice: price,
-            originalPrice: origPrice,
-            discount,
-            url: top1.url || top1.productUrl || searchUrl,
-            image: top1.image || top1.imageUrl || null,
-            position: 1,
-            success: true
-          };
+              return {
+                marketplace: config.name,
+                marketplaceName: config.name,
+                store: config.name,
+                domainId: config.domainId,
+                name: pName,
+                productName: pName,
+                title: pName,
+                currentPrice: price,
+                originalPrice: origPrice,
+                discount,
+                url: res.url || res.productUrl || searchUrl,
+                image: res.image || res.imageUrl || null,
+                position: idx + 1
+              };
+            });
+          }
+        } catch (err) {
+          console.warn(`[Hunter] Error buscando en ${config.name}:`, err.message);
         }
-        return null;
-      } catch (err) {
-        console.warn(`[Hunter] Error buscando en ${config.name}:`, err.message);
+      }
+
+      if (candidates.length === 0) return null;
+
+      // Evaluar cada candidato con el motor de scoring lógico de homología
+      let bestCandidate = null;
+      let highestScore = -1;
+
+      for (const cand of candidates) {
+        const homology = calculateHomologyScore(baseProductInfo, cand);
+        cand.homologyScore = homology.score;
+        cand.isMatch = homology.isMatch;
+        cand.homologyReasons = homology.reasons;
+
+        if (homology.isMatch && homology.score > highestScore) {
+          highestScore = homology.score;
+          bestCandidate = cand;
+        }
+      }
+
+      // Si ningún candidato superó el umbral de homología, no registrar coincidencia espuria
+      if (!bestCandidate) {
+        console.log(`[Hunter] ⚠️ No se encontró producto homólogo válido en ${key} (Candidatos evaluados: ${candidates.length})`);
         return null;
       }
+
+      console.log(`[Hunter] ✅ Homólogo encontrado en ${key}: "${bestCandidate.name}" con score ${bestCandidate.homologyScore}%`);
+      bestCandidate.success = true;
+      return bestCandidate;
     });
 
     const settled = await Promise.all(promises);
