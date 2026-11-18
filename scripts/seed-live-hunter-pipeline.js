@@ -34,7 +34,7 @@ const TABLES = {
 const liveHunterNode = {
   nodeId: 'oferty-live-hunter-node',
   name: 'Hunter Scraping Multitienda en Tiempo Real',
-  description: 'Búsqueda en paralelo en los sitios seleccionados (Alkosto, Éxito, Mercado Libre) extrayendo posición #1 y clasificando con Gemini IA',
+  description: 'Búsqueda en paralelo en los sitios seleccionados (Alkosto, Éxito, Mercado Libre) extrayendo posición #1 de forma directa y determinística (sin costo de IA)',
   type: 'HUNTER_SCRAPING',
   category: 'scraping',
   clientId: 'oferty',

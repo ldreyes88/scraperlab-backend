@@ -7,10 +7,6 @@ const AIService = require('./AIService');
 const ScraperService = require('./ScraperService');
 const { nowColombiaISO } = require('../utils/time');
 
-// Caché en memoria para clasificaciones de Hunter (evita re-gastar tokens en búsquedas repetidas)
-const hunterClassificationCache = new Map();
-const MAX_HUNTER_CACHE_SIZE = 500;
-
 class PipelineService {
   /**
    * Iniciar la ejecución de un pipeline
@@ -949,70 +945,47 @@ class PipelineService {
     const settled = await Promise.all(promises);
     const marketplacesFound = settled.filter(Boolean);
 
-    // Clasificación con IA (Gemini con Slimming y Caché)
-    let classification = {
-      isTechOrElectro: true,
-      category: 'Tecnologia',
-      name: query
-    };
+    // Clasificación Determinística / Heurística (100% libre de IA para máximo rendimiento y costo $0)
+    const normalizedText = `${query} ${marketplacesFound.map(m => m.name).join(' ')}`
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
-    const cacheKey = `${query.toLowerCase().trim()}_${isGift ? 'gift' : 'std'}`;
-    if (hunterClassificationCache.has(cacheKey)) {
-      console.log(`[Hunter] Usando clasificación en caché para "${query}" (0 tokens)`);
-      classification = { ...hunterClassificationCache.get(cacheKey) };
-    } else {
-      try {
-        // Prompt Slimming: enviamos solo los campos estrictamente necesarios para análisis
-        // reduciendo más del 80% de los tokens de entrada al eliminar URLs gigantes e imágenes
-        const slimMarkets = marketplacesFound.map(m => ({
-          tienda: m.marketplace,
-          titulo: m.name,
-          precio: m.currentPrice
-        }));
+    const ELECTRO_KEYWORDS = [
+      'televisor', 'televisores', 'tv', 'smart tv', 'nevera', 'neveras', 'refrigerador',
+      'lavadora', 'lavadoras', 'secadora', 'microondas', 'freidora', 'aire acondicionado',
+      'aspiradora', 'licuadora', 'cafetera', 'estufa', 'horno'
+    ];
 
-        const prompt = `Analiza la siguiente búsqueda de productos en comercio electrónico colombiano:
-Búsqueda: "${query}"
-Es modo regalo: ${isGift ? 'Sí' : 'No'}
-Resultados encontrados (Top 1 por tienda):
-${JSON.stringify(slimMarkets, null, 2)}
+    const TECH_KEYWORDS = [
+      'celular', 'celulares', 'smartphone', 'telefono', 'iphone', 'samsung', 'xiaomi',
+      'motorola', 'huawei', 'computador', 'computadores', 'laptop', 'portatil', 'portatil',
+      'macbook', 'lenovo', 'asus', 'dell', 'hp', 'tablet', 'tablets', 'ipad', 'audifonos',
+      'airpods', 'auriculares', 'smartwatch', 'reloj inteligente', 'consola', 'playstation',
+      'ps5', 'xbox', 'nintendo', 'switch', 'monitor', 'teclado', 'mouse', 'gamer'
+    ];
 
-Tu misión:
-1. Clasifica si el producto pertenece a la vertical de "Tecnología" (celulares, computadores, tablets, smartwatches, audífonos, accesorios tech) o "Electrodomésticos" (televisores, neveras, lavadoras, aires, electrodomésticos de cocina).
-2. Si pertenece a Tecnología o Electrodomésticos, marca "isTechOrElectro": true y especifica "category": "Tecnologia" o "Electrodomesticos".
-3. Si pertenece a otra categoría (moda, ropa, calzado, perfumes, belleza, hogar, muebles, alimentos, juguetes, etc.), marca "isTechOrElectro": false y "category": "Otros".
-4. Si es modo regalo, incluye un campo breve "giftRecommendation" aconsejando la mejor opción.
+    const isElectro = ELECTRO_KEYWORDS.some(kw => normalizedText.includes(kw));
+    const isTech = TECH_KEYWORDS.some(kw => normalizedText.includes(kw));
+    const isTechOrElectro = isElectro || isTech;
 
-Responde ÚNICAMENTE en JSON con este formato exacto:
-{
-  "isTechOrElectro": true,
-  "category": "Tecnologia",
-  "name": "Nombre estándar del producto",
-  "brand": "Marca si aplica",
-  "giftRecommendation": "Texto o null"
-}`;
-
-        const aiRes = await AIService.generateJSON(prompt, 'gemini-flash-lite-latest');
-        if (aiRes && typeof aiRes === 'object') {
-          classification = {
-            ...classification,
-            ...aiRes
-          };
-
-          // Guardar en caché LRU
-          if (hunterClassificationCache.size >= MAX_HUNTER_CACHE_SIZE) {
-            const firstKey = hunterClassificationCache.keys().next().value;
-            hunterClassificationCache.delete(firstKey);
-          }
-          hunterClassificationCache.set(cacheKey, classification);
-        }
-      } catch (aiErr) {
-        console.warn('[Hunter] Error en clasificación IA, usando fallback heurístico:', aiErr.message);
-        const techWords = ['celular', 'iphone', 'samsung', 'xiaomi', 'computador', 'laptop', 'tablet', 'tv', 'televisor', 'nevera', 'lavadora'];
-        const isTech = techWords.some(w => query.toLowerCase().includes(w));
-        classification.isTechOrElectro = isTech;
-        classification.category = isTech ? 'Tecnologia' : 'Otros';
-      }
+    let category = 'Otros';
+    if (isElectro) {
+      category = 'Electrodomésticos';
+    } else if (isTech) {
+      category = 'Tecnología';
     }
+
+    // Extracción de nombre representativo desde los comercios o la consulta
+    const topMarketName = marketplacesFound.length > 0 ? marketplacesFound[0].name : query;
+
+    const classification = {
+      isTechOrElectro,
+      category,
+      name: topMarketName || query,
+      brand: 'Genérica',
+      giftRecommendation: null
+    };
 
     const outputResult = {
       success: true, // El nodo Hunter se ejecutó exitosamente
@@ -1020,9 +993,9 @@ Responde ÚNICAMENTE en JSON con este formato exacto:
       query,
       name: classification.name || query,
       brand: classification.brand || 'Genérica',
-      category: classification.category || 'Tecnologia',
+      category: classification.category || 'Tecnología',
       isTechOrElectro: Boolean(classification.isTechOrElectro),
-      giftRecommendation: classification.giftRecommendation || null,
+      giftRecommendation: null,
       marketplacesFound,
       totalMarketsFound: marketplacesFound.length
     };
