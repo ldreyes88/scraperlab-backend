@@ -28,12 +28,13 @@ class WhatsAppService {
   /**
    * Envía un mensaje de texto a través de WhatsApp Cloud API (Meta Graph API)
    * @param {Object} params
-   * @param {string} params.to - Número de destino con código de país (ej: "573001234567")
+   * @param {string} params.to - Número de destino o user_id de WhatsApp
    * @param {string} params.text - Mensaje a enviar
+   * @param {string} [params.contextMessageId] - ID del mensaje recibido al cual se responde (wamid)
    * @param {Object} [params.bot] - Instancia del bot con credenciales personalizadas
    * @param {string} [params.previewUrl] - Booleano para activar vista previa de URLs
    */
-  static async sendTextMessage({ to, text, bot = null, previewUrl = false }) {
+  static async sendTextMessage({ to, text, contextMessageId = null, bot = null, previewUrl = false }) {
     if (!to || !text) {
       throw new Error('Parámetros "to" y "text" son obligatorios para enviar mensaje por WhatsApp');
     }
@@ -64,6 +65,14 @@ class WhatsAppService {
         body: text
       }
     };
+
+    // Para usuarios con WhatsApp Username / user_id, vincular el contextMessageId
+    // garantiza que Meta entregue el mensaje directamente en el hilo de conversación correspondiente
+    if (contextMessageId) {
+      payload.context = {
+        message_id: contextMessageId
+      };
+    }
 
     try {
       console.log(`[WhatsAppService] Enviando mensaje a ${cleanTo} usando PhoneID: ${credentials.phoneNumberId}`);
@@ -175,6 +184,7 @@ class WhatsAppService {
     const sendResult = await this.sendTextMessage({
       to: fromNumber,
       text: replyText,
+      contextMessageId: messageObj.id,
       bot: targetBot
     });
 
