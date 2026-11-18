@@ -168,6 +168,16 @@ class WhatsAppService {
 
     console.log(`[WhatsAppService] Mensaje recibido de ${contactName} (${fromNumber}): "${userText}" -> Asignado a Bot: ${botId}`);
 
+    // Construir perfil estructurado del contacto para Leads & Chats
+    const isPhoneNumber = fromNumber && /^\d+$/.test(fromNumber);
+    const userContact = {
+      phone: isPhoneNumber ? fromNumber : (contactObj.wa_id || null),
+      name: contactObj.profile?.name || contactName || null,
+      username: contactObj.profile?.username || null,
+      userId: contactObj.user_id || messageObj.from_user_id || null,
+      rawIdentifier: fromNumber
+    };
+
     // 2. Procesar a través del AgentOrchestratorService
     const AgentOrchestratorService = require('./AgentOrchestratorService');
     const orchestratorResult = await AgentOrchestratorService.processMessage({
@@ -175,7 +185,13 @@ class WhatsAppService {
       sessionId,
       message: userText,
       channel: 'whatsapp',
-      mode: targetBot?.defaultMode || null
+      mode: targetBot?.defaultMode || null,
+      userContact,
+      metadata: {
+        whatsappPhoneId: businessPhoneNumberId,
+        messageId: messageObj.id,
+        userContact
+      }
     });
 
     const replyText = orchestratorResult?.reply || 'Lo siento, en este momento no pude procesar tu solicitud.';

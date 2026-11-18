@@ -90,8 +90,39 @@ exports.getSession = async (req, res, next) => {
  */
 exports.getAllSessions = async (req, res, next) => {
   try {
-    const { botId, hasLead, limit = 100 } = req.query;
+    const { botId, hasLead, limit = 20, page, from, to, search } = req.query;
     const tenant = req.tenant;
+
+    let allowedClientIds = null;
+    let enterpriseBotIds = null;
+
+    if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
+      allowedClientIds = tenant.clientIds;
+      const botsArrays = await Promise.all(tenant.clientIds.map(cId => BotRepository.getByClientId(cId)));
+      enterpriseBotIds = botsArrays.flat().map(b => b.botId);
+    }
+
+    // Si viene page o from o to o search, responder con paginación
+    if (page !== undefined || from || to || search) {
+      const currentPage = parseInt(page, 10) || 1;
+      const pageSize = parseInt(limit, 10) || 20;
+
+      const result = await ChatSessionRepository.getPaginated(currentPage, pageSize, {
+        clientIds: allowedClientIds,
+        enterpriseBotIds,
+        botId: botId || null,
+        hasLead: hasLead === 'true',
+        from,
+        to,
+        search
+      });
+
+      return res.json({
+        success: true,
+        data: result.items,
+        pagination: result.pagination
+      });
+    }
 
     let sessions = await ChatSessionRepository.getAllSessions({
       botId: botId || null,
@@ -101,10 +132,6 @@ exports.getAllSessions = async (req, res, next) => {
 
     // Si el usuario no es admin y pertenece a empresas, aislar sólo a las sesiones de sus empresas o bots
     if (tenant && !tenant.isAdmin && tenant.isEnterprise) {
-      // Obtener los bots de sus empresas para tener la lista de botIds autorizados
-      const botsArrays = await Promise.all(tenant.clientIds.map(cId => BotRepository.getByClientId(cId)));
-      const enterpriseBotIds = botsArrays.flat().map(b => b.botId);
-
       sessions = sessions.filter(
         s => tenant.clientIds.includes(s.clientId) || enterpriseBotIds.includes(s.botId)
       );

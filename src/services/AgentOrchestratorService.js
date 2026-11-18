@@ -9,7 +9,7 @@ class AgentOrchestratorService {
   /**
    * Procesa un mensaje de usuario a través del orquestador multi-agente
    */
-  static async processMessage({ botId = 'scrapy', sessionId = null, message, history = [], channel = 'web', mode = null }) {
+  static async processMessage({ botId = 'scrapy', sessionId = null, message, history = [], channel = 'web', mode = null, metadata = {}, userContact = null }) {
     if (!message || message.trim() === '') {
       throw new Error('El mensaje no puede estar vacío');
     }
@@ -69,21 +69,50 @@ class AgentOrchestratorService {
     try {
       let session = await ChatSessionRepository.getById(currentSessionId);
       if (!session) {
+        // Pre-poblar datos de contacto para leads en WhatsApp si están disponibles
+        const initialLeadData = userContact ? {
+          name: userContact.name || userContact.username || null,
+          phone: userContact.phone || null,
+          username: userContact.username || null,
+          userId: userContact.userId || null,
+          canal: channel,
+          origin: channel === 'whatsapp' ? 'WhatsApp Direct' : 'Web Widget'
+        } : null;
+
         session = await ChatSessionRepository.create({
           sessionId: currentSessionId,
           botId,
           clientId: bot.clientId || 'scraperlab',
-          channel
+          channel,
+          leadData: initialLeadData,
+          metadata: { ...metadata, ...(userContact || {}) }
         });
         BotRepository.incrementMetric(botId, 'totalConversations').catch(() => {});
-      } else if (Array.isArray(session.messages) && session.messages.length > 0) {
-        // Si no se pasaron mensajes en history o vienen incompletos, hidratar desde DynamoDB
-        // para que si los mensajes demoran o es un chat por WhatsApp nunca pierda el hilo.
-        if (conversationHistory.length === 0) {
-          conversationHistory = session.messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content
-          }));
+      } else {
+        // Si la sesión ya existe pero no tenía nombre o teléfono registrado, enriquecerla
+        if (userContact && (!session.leadData?.phone || !session.leadData?.name)) {
+          const enrichLead = {};
+          if (userContact.phone && !session.leadData?.phone) enrichLead.phone = userContact.phone;
+          if ((userContact.name || userContact.username) && !session.leadData?.name) {
+            enrichLead.name = userContact.name || userContact.username;
+          }
+          if (userContact.username) enrichLead.username = userContact.username;
+          if (userContact.userId) enrichLead.userId = userContact.userId;
+
+          if (Object.keys(enrichLead).length > 0) {
+            ChatSessionRepository.updateLead(currentSessionId, enrichLead).catch(() => {});
+          }
+        }
+
+        if (Array.isArray(session.messages) && session.messages.length > 0) {
+          // Si no se pasaron mensajes en history o vienen incompletos, hidratar desde DynamoDB
+          // para que si los mensajes demoran o es un chat por WhatsApp nunca pierda el hilo.
+          if (conversationHistory.length === 0) {
+            conversationHistory = session.messages.slice(-10).map(m => ({
+              role: m.role,
+              content: m.content
+            }));
+          }
         }
       }
 

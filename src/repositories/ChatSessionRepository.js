@@ -1,7 +1,7 @@
 // src/repositories/ChatSessionRepository.js
 const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, UpdateCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
-const { nowColombiaISO } = require('../utils/time');
+const { nowColombiaISO, toColombiaDateKey } = require('../utils/time');
 
 class ChatSessionRepository {
   /**
@@ -94,22 +94,27 @@ class ChatSessionRepository {
   static async updateLead(sessionId, leadData) {
     try {
       const now = nowColombiaISO();
+      // Obtenemos los datos actuales de la sesión para no sobreescribir campos existentes (ej: phone o nombre)
+      const current = await this.getById(sessionId);
+      const mergedLead = {
+        ...(current?.leadData || {}),
+        ...leadData,
+        capturedAt: now
+      };
+
       await dynamoDB.send(
         new UpdateCommand({
           TableName: TABLES.CHAT_SESSIONS,
           Key: { sessionId },
           UpdateExpression: 'SET leadData = :lead, updatedAt = :now',
           ExpressionAttributeValues: {
-            ':lead': {
-              ...leadData,
-              capturedAt: now
-            },
+            ':lead': mergedLead,
             ':now': now
           }
         })
       );
 
-      return leadData;
+      return mergedLead;
     } catch (error) {
       console.error(`Error actualizando lead en sesión ${sessionId}:`, error);
       throw error;
@@ -148,6 +153,124 @@ class ChatSessionRepository {
       return items;
     } catch (error) {
       console.error('Error obteniendo todas las sesiones:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener sesiones paginadas con filtros de fecha, búsqueda y tipo
+   */
+  static async getPaginated(page = 1, pageSize = 20, filters = {}) {
+    try {
+      const params = {
+        TableName: TABLES.CHAT_SESSIONS
+      };
+
+      let allItems = [];
+      let lastEvaluatedKey = null;
+      let scanIterations = 0;
+
+      do {
+        if (lastEvaluatedKey) {
+          params.ExclusiveStartKey = lastEvaluatedKey;
+        }
+
+        const result = await dynamoDB.send(new ScanCommand(params));
+        const items = result.Items || [];
+
+        allItems = allItems.concat(items);
+        lastEvaluatedKey = result.LastEvaluatedKey;
+        scanIterations++;
+
+        if (!lastEvaluatedKey || scanIterations >= 10) {
+          break;
+        }
+      } while (true);
+
+      let filteredItems = [...allItems];
+
+      // Filtro multi-tenant / clientIds
+      if (filters.clientIds && filters.clientIds.length > 0) {
+        filteredItems = filteredItems.filter(
+          item => filters.clientIds.includes(item.clientId) || (filters.enterpriseBotIds && filters.enterpriseBotIds.includes(item.botId))
+        );
+      }
+
+      // Filtro por botId
+      if (filters.botId) {
+        filteredItems = filteredItems.filter(item => item.botId === filters.botId);
+      }
+
+      // Filtro por hasLead
+      if (filters.hasLead) {
+        filteredItems = filteredItems.filter(
+          item => item.leadData && Object.keys(item.leadData).some(k => !!item.leadData[k])
+        );
+      }
+
+      // Filtro por fecha (en base a updatedAt o createdAt) usando zona horaria Colombia
+      if (filters.from || filters.to) {
+        filteredItems = filteredItems.filter(item => {
+          const itemTime = item.updatedAt || item.createdAt;
+          if (!itemTime) return false;
+
+          const itemDate = toColombiaDateKey(itemTime);
+          if (!itemDate) return false;
+
+          if (filters.from && filters.to) {
+            return itemDate >= filters.from && itemDate <= filters.to;
+          } else if (filters.from) {
+            return itemDate >= filters.from;
+          } else if (filters.to) {
+            return itemDate <= filters.to;
+          }
+          return true;
+        });
+      }
+
+      // Filtro de búsqueda textual
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        filteredItems = filteredItems.filter(item => {
+          const botId = (item.botId || '').toLowerCase();
+          const name = (item.leadData?.name || item.metadata?.name || item.metadata?.username || '').toLowerCase();
+          const email = (item.leadData?.email || '').toLowerCase();
+          const phone = (item.leadData?.phone || item.metadata?.phone || '').toLowerCase();
+          const site = (item.leadData?.targetUrl || '').toLowerCase();
+          const sessionId = (item.sessionId || '').toLowerCase();
+
+          return (
+            botId.includes(searchLower) ||
+            name.includes(searchLower) ||
+            email.includes(searchLower) ||
+            phone.includes(searchLower) ||
+            site.includes(searchLower) ||
+            sessionId.includes(searchLower)
+          );
+        });
+      }
+
+      // Ordenar por timestamp descendente (más reciente primero)
+      filteredItems.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+      // Paginación
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const items = filteredItems.slice(startIndex, endIndex);
+      const hasNextPage = filteredItems.length > endIndex;
+
+      return {
+        items,
+        pagination: {
+          currentPage: page,
+          pageSize,
+          totalItems: filteredItems.length,
+          hasNextPage,
+          hasPrevPage: page > 1
+        }
+      };
+    } catch (error) {
+      console.error('Error obteniendo sesiones paginadas:', error);
       throw error;
     }
   }
