@@ -11,10 +11,20 @@ class AIService {
     this.genAI = this.apiKey ? new GoogleGenerativeAI(this.apiKey, { apiVersion: 'v1' }) : null;
   }
 
-  async generateContent(prompt, modelName = 'gemini-flash-lite-latest', config = {}) {
-    if (!this.genAI) {
+  getGenAI() {
+    const currentKey = process.env.GEMINI_API_KEY;
+    if (!currentKey) {
       throw new Error('Google Generative AI no inicializado - Falta API Key');
     }
+    if (!this.genAI || this.apiKey !== currentKey) {
+      this.apiKey = currentKey;
+      this.genAI = new GoogleGenerativeAI(this.apiKey, { apiVersion: 'v1' });
+    }
+    return this.genAI;
+  }
+
+  async generateContent(prompt, modelName = 'gemini-flash-lite-latest', config = {}) {
+    const genAI = this.getGenAI();
 
     // Limpieza de nombre y migración automática para evitar 503 (High Demand)
     let cleanModelName = modelName?.trim() || 'gemini-flash-lite-latest';
@@ -26,7 +36,7 @@ class AIService {
     
     
     try {
-      const model = this.genAI.getGenerativeModel({ 
+      const model = genAI.getGenerativeModel({ 
         model: cleanModelName,
         generationConfig: {
           temperature: config.temperature ?? 0.7,

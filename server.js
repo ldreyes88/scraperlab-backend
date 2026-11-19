@@ -19,6 +19,7 @@ const nodesHandler = require('./src/handlers/nodes');
 const botsHandler = require('./src/handlers/bots');
 const chatHandler = require('./src/handlers/chat');
 const whatsappHandler = require('./src/handlers/whatsapp');
+const aiEnrichHandler = require('./src/handlers/ai-enrich');
 
 const app = express();
 
@@ -139,6 +140,9 @@ app.post('/api/pipelines', verifyToken, requireRole(['admin']), pipelinesHandler
 app.put('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.updatePipeline);
 app.delete('/api/pipelines/:pipelineId', verifyToken, requireRole(['admin']), pipelinesHandler.deletePipeline);
 app.post('/api/pipelines/:pipelineId/run', verifyAuth, pipelinesHandler.runPipeline);
+
+// 🧠 AI Enrichment endpoints
+app.post('/api/ai/enrich-product', verifyAuth, aiEnrichHandler.enrichProduct);
 
 // 🧩 Reusable Nodes endpoints (catálogo de nodos independientes)
 app.get('/api/nodes', verifyAuth, resolveTenant, nodesHandler.getAllNodes);
