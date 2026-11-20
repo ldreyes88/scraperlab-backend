@@ -194,6 +194,20 @@ class WhatsAppService {
       }
     });
 
+    // Si la sesión está en control humano, NO enviar respuesta automática de IA por WhatsApp
+    if (orchestratorResult?.silent || orchestratorResult?.humanTakeover) {
+      console.log(`[WhatsAppService] Mensaje entrante procesado pero no respondido por IA debido a HUMAN TAKEOVER en sesión ${sessionId}`);
+      return {
+        success: true,
+        silent: true,
+        humanTakeover: true,
+        botId,
+        fromNumber,
+        contactName,
+        query: userText
+      };
+    }
+
     const replyText = orchestratorResult?.reply || 'Lo siento, en este momento no pude procesar tu solicitud.';
 
     // 3. Enviar la respuesta de vuelta por WhatsApp

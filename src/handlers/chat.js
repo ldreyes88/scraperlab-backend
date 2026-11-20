@@ -86,6 +86,121 @@ exports.getSession = async (req, res, next) => {
 };
 
 /**
+ * Modificar el estado de control humano de la sesión (Tomar o soltar el control)
+ */
+exports.setTakeover = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const { humanTakeover = true, agentName } = req.body;
+
+    const session = await ChatSessionRepository.getById(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: `Sesión ${sessionId} no encontrada`
+      });
+    }
+
+    const defaultAgent = req.user?.name || req.user?.email || 'Asesor Humano';
+    const result = await ChatSessionRepository.updateTakeover(sessionId, {
+      humanTakeover: Boolean(humanTakeover),
+      agentName: agentName || defaultAgent
+    });
+
+    return res.json({
+      success: true,
+      message: humanTakeover
+        ? `Control tomado exitosamente por ${result.takeoverBy}`
+        : 'Control devuelto al Bot con IA',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Enviar mensaje como asesor humano a la sesión (vía Web o WhatsApp)
+ */
+exports.sendAgentMessage = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const { message, agentName } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'El mensaje no puede estar vacío'
+      });
+    }
+
+    const session = await ChatSessionRepository.getById(sessionId);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: `Sesión ${sessionId} no encontrada`
+      });
+    }
+
+    const senderName = agentName || req.user?.name || req.user?.email || 'Asesor';
+
+    // 1. Guardar mensaje en el historial de la sesión
+    const savedMsg = await ChatSessionRepository.addMessage(sessionId, {
+      role: 'assistant',
+      content: message.trim(),
+      senderType: 'human_agent',
+      agentName: senderName
+    });
+
+    let sendResult = null;
+
+    // 2. Si el canal es WhatsApp, despachar el mensaje mediante WhatsApp Cloud API
+    if (session.channel === 'whatsapp') {
+      const WhatsAppService = require('../services/WhatsAppService');
+      const bot = await BotRepository.getById(session.botId);
+
+      // Obtener el destinatario (número o user_id)
+      let recipient = session.leadData?.phone ||
+                      session.metadata?.phone ||
+                      session.metadata?.userId ||
+                      session.metadata?.rawIdentifier;
+
+      if (!recipient && sessionId.startsWith('wa_')) {
+        const parts = sessionId.split('_');
+        recipient = parts[2] || null;
+      }
+
+      if (recipient) {
+        // Encontrar el último ID de mensaje del usuario para adjuntarlo como context (por si usa Username)
+        const lastUserMsg = [...(session.messages || [])].reverse().find(m => m.role === 'user');
+        const contextMessageId = lastUserMsg?.id || session.metadata?.messageId || null;
+
+        sendResult = await WhatsAppService.sendTextMessage({
+          to: recipient,
+          text: message.trim(),
+          contextMessageId,
+          bot
+        });
+      } else {
+        console.warn(`[sendAgentMessage] No se pudo determinar el destinatario para la sesión ${sessionId}`);
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: 'Mensaje enviado exitosamente',
+      data: {
+        message: savedMsg,
+        channel: session.channel,
+        sendResult
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Listar todas las sesiones y leads (Panel de administración global o filtrado por empresa)
  */
 exports.getAllSessions = async (req, res, next) => {

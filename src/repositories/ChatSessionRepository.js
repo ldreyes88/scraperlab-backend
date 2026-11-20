@@ -122,8 +122,30 @@ class ChatSessionRepository {
   }
 
   /**
-   * Obtener todas las sesiones con filtros opcionales (botId, hasLead)
+   * Actualizar estado de control humano de la sesión (takeover)
    */
+  static async updateTakeover(sessionId, { humanTakeover = true, agentName = 'Asesor Humano' }) {
+    try {
+      const now = nowColombiaISO();
+      await dynamoDB.send(
+        new UpdateCommand({
+          TableName: TABLES.CHAT_SESSIONS,
+          Key: { sessionId },
+          UpdateExpression: 'SET humanTakeover = :ht, takeoverBy = :agent, updatedAt = :now',
+          ExpressionAttributeValues: {
+            ':ht': Boolean(humanTakeover),
+            ':agent': humanTakeover ? agentName : null,
+            ':now': now
+          }
+        })
+      );
+
+      return { sessionId, humanTakeover, takeoverBy: humanTakeover ? agentName : null };
+    } catch (error) {
+      console.error(`Error actualizando takeover en sesión ${sessionId}:`, error);
+      throw error;
+    }
+  }
   static async getAllSessions({ botId = null, hasLead = false, limit = 100 } = {}) {
     try {
       if (botId && !hasLead) {

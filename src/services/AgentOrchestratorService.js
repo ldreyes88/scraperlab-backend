@@ -66,8 +66,9 @@ class AgentOrchestratorService {
     // 2. Gestionar sesión en DynamoDB y recuperar historial de conversación para memoria contextual
     let conversationHistory = Array.isArray(history) && history.length > 0 ? [...history] : [];
 
+    let session = null;
     try {
-      let session = await ChatSessionRepository.getById(currentSessionId);
+      session = await ChatSessionRepository.getById(currentSessionId);
       if (!session) {
         // Pre-poblar datos de contacto para leads en WhatsApp si están disponibles
         const initialLeadData = userContact ? {
@@ -122,6 +123,21 @@ class AgentOrchestratorService {
       });
     } catch (sessionErr) {
       console.warn('[Orchestrator] Advertencia: Operación de sesión DynamoDB omitida:', sessionErr.message);
+    }
+
+    // CONTROL HUMANO (HUMAN TAKEOVER):
+    // Si un asesor humano tomó el control de la sesión desde el portal,
+    // el bot con IA NO debe responder automáticamente para no interrumpir al humano.
+    if (session && session.humanTakeover) {
+      console.log(`[Orchestrator] Sesión ${currentSessionId} en modo HUMAN TAKEOVER por ${session.takeoverBy || 'Asesor'}. Respuesta de IA silenciada.`);
+      return {
+        reply: '',
+        silent: true,
+        humanTakeover: true,
+        takeoverBy: session.takeoverBy,
+        action: 'HUMAN_IN_CONTROL',
+        actionData: { agentName: session.takeoverBy }
+      };
     }
 
     // 3. AGENTE 1: Triage & Router (Clasificación de Intención)

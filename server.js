@@ -155,6 +155,8 @@ app.delete('/api/nodes/:nodeId', verifyToken, requireRole(['admin']), nodesHandl
 app.post('/api/chat/message', chatHandler.sendMessage);
 app.post('/api/chat/lead', chatHandler.saveLead);
 app.get('/api/chat/sessions/:sessionId', chatHandler.getSession);
+app.put('/api/chat/sessions/:sessionId/takeover', verifyAuth, chatHandler.setTakeover);
+app.post('/api/chat/sessions/:sessionId/agent-message', verifyAuth, chatHandler.sendAgentMessage);
 app.get('/api/bots/:botId/public', botsHandler.getPublicBotConfig);
 
 // 📱 WhatsApp Cloud API Webhooks & Mensajería
