@@ -164,19 +164,31 @@ class AgentOrchestratorService {
 
     } else if (triageResult.intent === 'WHATSAPP') {
       // AGENTE ESCALATION / WHATSAPP HANDOFF
+      const phone = bot.channels?.whatsapp?.humanSupportNumber ||
+                    bot.channels?.whatsapp?.agentPhoneNumber ||
+                    bot.channels?.whatsapp?.phoneNumber ||
+                    (isOferty ? '573053206465' : '573219662703');
+      const cleanPhone = phone.replace(/[^0-9]/g, '');
+
       if (channel === 'whatsapp') {
         // Si el usuario ya está chateando desde WhatsApp
-        const agentPhone = bot.channels?.whatsapp?.agentPhoneNumber || bot.channels?.whatsapp?.phoneNumber || '573219662703';
-        reply = `¡Con gusto! Puedes comunicarte con uno de nuestros asesores especializados escribiendo o llamando al +${agentPhone}. En breve un asesor humano también podrá revisar esta conversación.`;
+        reply = `Lamento cualquier molestia o duda que hayas tenido. Puedes comunicarte directamente con nuestro asesor humano escribiendo o llamando al +${cleanPhone}. En breve una persona real de nuestro equipo continuará asistiéndote aquí.`;
         action = 'HUMAN_HANDOFF';
-        actionData = { agentPhone };
+        actionData = { agentPhone: cleanPhone };
       } else {
-        const phone = bot.channels?.whatsapp?.phoneNumber || '573219662703';
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
-        const encodedText = encodeURIComponent(`Hola ${bot.name}, estuve hablando con el asistente en la web. Mi consulta es: "${message}"`);
+        const isComplaint = triageResult.entities?.reason === 'human_escalation_frustration';
+        const prefixMsg = isComplaint
+          ? `Hola ${bot.name}, estuve buscando en la web pero tuve un problema y necesito ayuda de un asesor humano: "${message}"`
+          : `Hola ${bot.name}, estuve consultando en la web y me gustaría hablar con un asesor: "${message}"`;
+        const encodedText = encodeURIComponent(prefixMsg);
         const waUrl = `https://wa.me/${cleanPhone}?text=${encodedText}`;
 
-        reply = `¡Por supuesto! Puedes contactar a nuestro equipo de atención directamente por WhatsApp (+${cleanPhone}).`;
+        if (isComplaint) {
+          reply = `Lamento mucho el inconveniente con tu búsqueda. Para darte una solución inmediata, te estoy comunicando directamente con nuestro equipo de atención humana por WhatsApp (+${cleanPhone}). Haz clic en el botón de abajo para continuar con un asesor real.`;
+        } else {
+          reply = `¡Por supuesto! Puedes contactar a nuestro equipo de atención humana directamente por WhatsApp (+${cleanPhone}). Haz clic abajo para iniciar la conversación.`;
+        }
+
         action = 'OPEN_WHATSAPP';
         actionData = { url: waUrl, phoneNumber: cleanPhone };
       }
@@ -320,14 +332,34 @@ ${matchedProducts.map(p => `- REF/CÓDIGO: ${p.codigo}
       'cuéntame una historia', 'cuentame una historia', 'receta de cocina', 'cómo hacer una torta'
     ];
 
+    // 4. Patrones de queja, frustración o solicitud directa de atención humana (Escalación inmediata a WhatsApp)
+    const frustrationAndHumanPatterns = [
+      'pesim', 'pésim', 'no aparece nada', 'no sirve', 'mala pagin', 'mala págin',
+      'no encuentra nada', 'horrible', 'fraude', 'engañan', 'engañando', 'humano',
+      'asesor real', 'persona real', 'atencion al cliente', 'atención al cliente',
+      'hablar con alguien', 'comunicarme con una persona', 'alguien me puede atender',
+      'dame un numero', 'dame un número', 'whatsapp', 'soporte tecnico', 'soporte técnico',
+      'no me responde nada', 'pesimo servicio', 'pésimo servicio'
+    ];
+
     // --- GUARDRAIL DETERMINISTA RÁPIDO (Cero Latencia) ---
     const isJailbreak = jailbreakPatterns.some(p => cleanMsg.includes(p));
     const isArchitectureProbe = architectureProbePatterns.some(p => cleanMsg.includes(p));
     const isOffTopic = offTopicPatterns.some(p => cleanMsg.includes(p));
+    const isFrustratedOrHumanRequest = frustrationAndHumanPatterns.some(p => cleanMsg.includes(p));
 
     if (isJailbreak || (hideArchitecture && isArchitectureProbe) || (restrictOffTopic && isOffTopic)) {
       console.log(`[RouterAgent] Guardrail rápido activado para bot ${bot.botId}: regla de seguridad o fuera de contexto detectada`);
       return { intent: 'RESTRICTED', confidence: 1.0, entities: {} };
+    }
+
+    if (isFrustratedOrHumanRequest) {
+      console.log(`[RouterAgent] Escalación a humano activada por frustración/solicitud directa para bot ${bot.botId}`);
+      return {
+        intent: 'WHATSAPP',
+        confidence: 1.0,
+        entities: { reason: 'human_escalation_frustration' }
+      };
     }
 
     // Para Caribe Partes, Llantas Ya o e-commerce de autopartes
