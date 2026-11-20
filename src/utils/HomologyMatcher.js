@@ -159,9 +159,10 @@ function calculateHomologyScore(base = {}, candidate = {}) {
   }
 
   // 4. MARCA
+  const candBrand = cleanString(candidate.brand || candidate.brandName || '');
   if (base.brand) {
     const brandClean = cleanString(base.brand);
-    if (brandClean && candNorm.includes(brandClean)) {
+    if (brandClean && (candNorm.includes(brandClean) || candBrand.includes(brandClean))) {
       score += 20;
       reasons.push(`Marca coincidente: ${base.brand}`);
     }
@@ -172,6 +173,7 @@ function calculateHomologyScore(base = {}, candidate = {}) {
   const baseTokens = baseNorm.split(' ').filter(t => t.length > 2 && !stopWords.has(t));
   const candTokens = new Set(candNorm.split(' ').filter(t => t.length > 2 && !stopWords.has(t)));
 
+  let tokenMatchRatio = 0;
   if (baseTokens.length > 0) {
     let matchedTokens = 0;
     for (const token of baseTokens) {
@@ -179,15 +181,27 @@ function calculateHomologyScore(base = {}, candidate = {}) {
         matchedTokens++;
       }
     }
-    const tokenMatchRatio = matchedTokens / baseTokens.length;
+    tokenMatchRatio = matchedTokens / baseTokens.length;
     const tokenPoints = Math.round(tokenMatchRatio * 35);
     score += tokenPoints;
     reasons.push(`Coincidencia léxica: ${Math.round(tokenMatchRatio * 100)}% (+${tokenPoints} pts)`);
   }
 
+  // 6. DETECCIÓN EN BÚSQUEDA ABIERTA (Live Search sin producto base en catálogo)
+  // Cuando es una búsqueda directa del usuario (basePrice === 0 o sin marca base),
+  // y todos los términos principales buscados están presentes en el título del candidato
+  const isOpenSearch = (!basePrice || basePrice <= 0) && (!base.brand || base.brand.trim() === '');
+  if (isOpenSearch && tokenMatchRatio >= 0.95 && baseTokens.length > 0) {
+    // Si contiene el 100% de las palabras clave buscadas, se considera coincidencia directa
+    score += 35;
+    reasons.push('Búsqueda abierta: coincidencia total de términos de búsqueda (+35 pts)');
+  }
+
   // Normalizar score entre 0 y 100
   const finalScore = Math.max(0, Math.min(100, score));
-  const isMatch = finalScore >= 65; // Umbral de aceptación homóloga
+  // Si es búsqueda abierta con coincidencia completa, el umbral es más flexible (>= 50)
+  const threshold = (isOpenSearch && tokenMatchRatio >= 0.95) ? 50 : 65;
+  const isMatch = finalScore >= threshold; // Umbral de aceptación homóloga
 
   return {
     score: finalScore,

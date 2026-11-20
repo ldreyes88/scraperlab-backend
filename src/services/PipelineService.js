@@ -804,10 +804,11 @@ class PipelineService {
 
       let candidates = [];
 
-      // 1. ÉXITO (Conector nativo VTEX ultrarrápido < 150ms)
+      // 1. ÉXITO (Conector nativo VTEX con fallback a host directo VTEX < 150ms)
       if (key === 'exito') {
         try {
           const exitoUrls = [
+            `https://exitocol.vtexcommercestable.com.br/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`,
             `https://www.exito.com/io/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`,
             `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`
           ];
@@ -836,6 +837,8 @@ class PipelineService {
               const origPrice = toSafeNumber(item.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
               const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
               const pName = item.productName || query;
+              const rawLink = item.link || (item.linkText ? `https://www.exito.com/${item.linkText}/p` : `https://www.exito.com/s?q=${encodeURIComponent(query)}`);
+              const cleanUrl = rawLink.replace('exitocol.vtexcommercestable.com.br', 'www.exito.com');
               return {
                 marketplace: 'Éxito',
                 marketplaceName: 'Éxito',
@@ -844,10 +847,11 @@ class PipelineService {
                 name: pName,
                 productName: pName,
                 title: pName,
+                brand: item.brand || '',
                 currentPrice: price,
                 originalPrice: origPrice,
                 discount,
-                url: item.link || `https://www.exito.com/${item.linkText}/p`,
+                url: cleanUrl,
                 image: item.items?.[0]?.images?.[0]?.imageUrl || null,
                 position: idx + 1
               };
@@ -889,6 +893,7 @@ class PipelineService {
                 const pUrl = hit.url_es_string ? `${host}${hit.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
                 const pImg = hit['img-750wx750h_string'] || hit['img-310wx310h_string'] || hit['img-1400wx1400h_string'] || null;
                 const pName = hit.name_text_es || query;
+                const pBrand = hit.brand_string || (Array.isArray(hit.brand_string_mv) ? hit.brand_string_mv[0] : hit.marca_text) || '';
 
                 return {
                   marketplace: storeName,
@@ -898,6 +903,7 @@ class PipelineService {
                   name: pName,
                   productName: pName,
                   title: pName,
+                  brand: pBrand,
                   currentPrice: price,
                   originalPrice: origPrice,
                   discount,
@@ -998,10 +1004,11 @@ class PipelineService {
 
     const TECH_KEYWORDS = [
       'celular', 'celulares', 'smartphone', 'telefono', 'iphone', 'samsung', 'xiaomi',
-      'motorola', 'huawei', 'computador', 'computadores', 'laptop', 'portatil', 'portatil',
-      'macbook', 'lenovo', 'asus', 'dell', 'hp', 'tablet', 'tablets', 'ipad', 'audifonos',
+      'motorola', 'huawei', 'computador', 'computadores', 'laptop', 'portatil', 'portátil',
+      'macbook', 'lenovo', 'asus', 'dell', 'hp', 'tablet', 'tablets', 'ipad', 'audifonos', 'audífonos',
       'airpods', 'auriculares', 'smartwatch', 'reloj inteligente', 'consola', 'playstation',
-      'ps5', 'xbox', 'nintendo', 'switch', 'monitor', 'teclado', 'mouse', 'gamer'
+      'ps5', 'xbox', 'nintendo', 'switch', 'monitor', 'teclado', 'mouse', 'gamer',
+      'microfono', 'micrófono', 'mic', 'parlante', 'altavoz', 'camara', 'cámara', 'drone', 'dji'
     ];
 
     const isElectro = ELECTRO_KEYWORDS.some(kw => normalizedText.includes(kw));
