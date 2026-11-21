@@ -55,9 +55,9 @@ class ChatSessionRepository {
   }
 
   /**
-   * Añadir mensaje a una sesión
+   * Añadir mensaje a una sesión (con control de ventana de retención para evitar superar 400KB)
    */
-  static async addMessage(sessionId, message) {
+  static async addMessage(sessionId, message, maxRetention = 100) {
     try {
       const now = nowColombiaISO();
       const formattedMessage = {
@@ -67,6 +67,27 @@ class ChatSessionRepository {
         action: message.action || null,
         metadata: message.metadata || null
       };
+
+      // Si se especifica un límite de retención y la sesión supera el umbral,
+      // recortamos los mensajes más antiguos manteniendo los últimos maxRetention.
+      if (maxRetention && maxRetention > 0) {
+        const current = await this.getById(sessionId);
+        if (current && Array.isArray(current.messages) && current.messages.length >= maxRetention) {
+          const trimmedMessages = [...current.messages.slice(-(maxRetention - 1)), formattedMessage];
+          await dynamoDB.send(
+            new UpdateCommand({
+              TableName: TABLES.CHAT_SESSIONS,
+              Key: { sessionId },
+              UpdateExpression: 'SET messages = :messages, updatedAt = :now',
+              ExpressionAttributeValues: {
+                ':messages': trimmedMessages,
+                ':now': now
+              }
+            })
+          );
+          return formattedMessage;
+        }
+      }
 
       await dynamoDB.send(
         new UpdateCommand({
@@ -181,38 +202,69 @@ class ChatSessionRepository {
 
   /**
    * Obtener sesiones paginadas con filtros de fecha, búsqueda y tipo
+   * Utiliza GSI clientId-updatedAt-index cuando se consulta por un clientId específico
    */
   static async getPaginated(page = 1, pageSize = 20, filters = {}) {
     try {
-      const params = {
-        TableName: TABLES.CHAT_SESSIONS
-      };
-
       let allItems = [];
-      let lastEvaluatedKey = null;
-      let scanIterations = 0;
 
-      do {
-        if (lastEvaluatedKey) {
-          params.ExclusiveStartKey = lastEvaluatedKey;
+      // 1. Intentar optimización por GSI si viene un único clientId y sin búsqueda global compleja
+      const hasSingleClient = filters.clientIds && filters.clientIds.length === 1 && !filters.enterpriseBotIds?.length;
+      let usedGsi = false;
+
+      if (hasSingleClient) {
+        const targetClientId = filters.clientIds[0];
+        try {
+          const queryParams = {
+            TableName: TABLES.CHAT_SESSIONS,
+            IndexName: 'clientId-updatedAt-index',
+            KeyConditionExpression: 'clientId = :c',
+            ExpressionAttributeValues: {
+              ':c': targetClientId
+            },
+            ScanIndexForward: false // Más recientes primero
+          };
+
+          const queryResult = await dynamoDB.send(new QueryCommand(queryParams));
+          allItems = queryResult.Items || [];
+          usedGsi = true;
+        } catch (gsiErr) {
+          // Si el índice aún está en backfilling o falla, fallback silencioso a Scan
+          usedGsi = false;
         }
+      }
 
-        const result = await dynamoDB.send(new ScanCommand(params));
-        const items = result.Items || [];
+      // 2. Si no se pudo usar GSI (multi-cliente, admin global o GSI en creación), usar ScanCommand
+      if (!usedGsi) {
+        const params = {
+          TableName: TABLES.CHAT_SESSIONS
+        };
 
-        allItems = allItems.concat(items);
-        lastEvaluatedKey = result.LastEvaluatedKey;
-        scanIterations++;
+        let lastEvaluatedKey = null;
+        let scanIterations = 0;
 
-        if (!lastEvaluatedKey || scanIterations >= 10) {
-          break;
-        }
-      } while (true);
+        do {
+          if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+          }
+
+          const result = await dynamoDB.send(new ScanCommand(params));
+          const items = result.Items || [];
+
+          allItems = allItems.concat(items);
+          lastEvaluatedKey = result.LastEvaluatedKey;
+          scanIterations++;
+
+          if (!lastEvaluatedKey || scanIterations >= 10) {
+            break;
+          }
+        } while (true);
+      }
 
       let filteredItems = [...allItems];
 
-      // Filtro multi-tenant / clientIds
-      if (filters.clientIds && filters.clientIds.length > 0) {
+      // Filtro multi-tenant / clientIds (si no se usó GSI)
+      if (!usedGsi && filters.clientIds && filters.clientIds.length > 0) {
         filteredItems = filteredItems.filter(
           item => filters.clientIds.includes(item.clientId) || (filters.enterpriseBotIds && filters.enterpriseBotIds.includes(item.botId))
         );

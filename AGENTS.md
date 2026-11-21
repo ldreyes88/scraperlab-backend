@@ -9,3 +9,4 @@
   - `src/middleware/`: Manejo global (`errorHandler.js`), CORS.
   - `src/utils/`: Helpers reutilizables (`response.js`, `time.js`).
 - Calidad: Sintaxis válida y sin errores. Mantener actualizados `scraperlab-backend-structure.txt` y `scraperlab-backend-arquitecture.txt`.
+- Despliegues & Git: Los agentes están autorizados a realizar `commit` y `push` directo a la rama productiva (`master`) tras verificar sintaxis y validaciones correspondientes.

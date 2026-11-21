@@ -238,7 +238,7 @@ class AgentOrchestratorService {
       // AGENTE KNOWLEDGE & RAG (Consulta de productos o catálogo)
       let knowledgeContext = '';
 
-      if (bot.botId === 'caribe-partes' || bot.clientId === 'caribe-partes') {
+      if (bot.botId === 'lubricantes-caribe' || bot.clientId === 'lubricantes-caribe' || bot.botId === 'caribe-partes' || bot.clientId === 'caribe-partes') {
         const CaribePartesRepository = require('../repositories/CaribePartesRepository');
         const searchEntities = triageResult.entities || {};
         const matchedProducts = await CaribePartesRepository.searchProducts({
@@ -363,7 +363,7 @@ ${matchedProducts.map(p => `- REF/CÓDIGO: ${p.codigo}
     }
 
     // Para Caribe Partes, Llantas Ya o e-commerce de autopartes
-    const isAutoPartes = bot.botId === 'caribe-partes' || bot.botId === 'llantas' || bot.clientId === 'caribe-partes' || bot.clientId === 'llantas-ya';
+    const isAutoPartes = bot.botId === 'lubricantes-caribe' || bot.botId === 'caribe-partes' || bot.botId === 'llantas' || bot.clientId === 'lubricantes-caribe' || bot.clientId === 'caribe-partes' || bot.clientId === 'llantas-ya';
 
     const prompt = isOferty
       ? `Actúa como el clasificador de intenciones y filtro de seguridad estricto del bot "${bot.name}" para Oferty Colombia.

@@ -4,7 +4,7 @@ const ClientRepository = require('../repositories/ClientRepository');
 /**
  * Middleware para resolver el contexto multi-tenant del usuario autenticado.
  * - Si es admin: req.tenant = { isAdmin: true, clientIds: [] }
- * - Si es usuario empresarial: req.tenant = { isAdmin: false, clientIds: ['caribe-partes', ...] }
+ * - Si es usuario empresarial: req.tenant = { isAdmin: false, clientIds: ['lubricantes-caribe', ...] }
  */
 const resolveTenant = async (req, res, next) => {
   try {

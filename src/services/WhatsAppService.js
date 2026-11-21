@@ -160,7 +160,7 @@ class WhatsAppService {
     // Fallback si aún no encontramos bot específico
     if (!targetBot) {
       const allBots = await BotRepository.getAll();
-      targetBot = allBots.find(b => b.botId === 'caribe-partes' || b.botId === 'llantas' || b.botId === 'oferty' || b.botId === 'scrapy') || allBots[0];
+      targetBot = allBots.find(b => b.botId === 'lubricantes-caribe' || b.botId === 'caribe-partes' || b.botId === 'llantas' || b.botId === 'oferty' || b.botId === 'scrapy') || allBots[0];
     }
 
     const botId = targetBot?.botId || 'scrapy';
