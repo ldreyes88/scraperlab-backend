@@ -211,14 +211,31 @@ Analiza el texto y genera un JSON con la siguiente estructura exacta:
 
   /**
    * Construye el contexto de conocimiento listo para inyectar al agente conversacional
+   * Soporta filtrado por query/intención para evitar sobrecargar tokens.
    */
-  static async getKnowledgeContext(botId) {
+  static async getKnowledgeContext(botId, filterQuery = '') {
     const items = await BotKnowledgeRepository.getByBotId(botId);
     if (!items || items.length === 0) return '';
 
+    // Si viene una consulta/query de usuario, aplicamos filtrado de relevancia básica
+    const queryTokens = filterQuery ? filterQuery.toLowerCase().split(/\s+/).filter(t => t.length > 2) : [];
+    
+    let filteredItems = items;
+    if (queryTokens.length > 0 && items.length > 3) {
+      // Priorizar documentos que coincidan con términos de la consulta
+      filteredItems = items.filter(item => {
+        const text = `${item.title || ''} ${item.summary || ''} ${(item.services || []).join(' ')} ${(item.faqs || []).map(f => f.question + ' ' + f.answer).join(' ')}`.toLowerCase();
+        return queryTokens.some(token => text.includes(token));
+      });
+      // Si el filtro no arroja nada, recurrir a los primeros items para mantener contexto general
+      if (filteredItems.length === 0) {
+        filteredItems = items.slice(0, 3);
+      }
+    }
+
     let context = '=== BASE DE CONOCIMIENTO ENTRENADA DEL BOT ===\n\n';
 
-    items.forEach((item, index) => {
+    filteredItems.forEach((item, index) => {
       context += `[DOCUMENTO ${index + 1}: ${item.title || item.sourceUrl}]\n`;
       if (item.summary) context += `Resumen: ${item.summary}\n`;
       if (item.services && item.services.length > 0) {
@@ -226,7 +243,14 @@ Analiza el texto y genera un JSON con la siguiente estructura exacta:
       }
       if (item.faqs && item.faqs.length > 0) {
         context += `Preguntas Frecuentes:\n`;
-        item.faqs.forEach(f => {
+        // Si hay muchas FAQs y estamos filtrando, priorizar las que coincidan
+        const faqsToShow = queryTokens.length > 0 
+          ? item.faqs.filter(f => queryTokens.some(tok => (f.question + ' ' + f.answer).toLowerCase().includes(tok))).slice(0, 5)
+          : item.faqs;
+
+        const effectiveFaqs = faqsToShow.length > 0 ? faqsToShow : item.faqs.slice(0, 4);
+
+        effectiveFaqs.forEach(f => {
           context += `  P: ${f.question}\n  R: ${f.answer}\n`;
         });
       }

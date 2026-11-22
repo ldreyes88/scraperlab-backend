@@ -261,7 +261,7 @@ ${matchedProducts.map(p => `- REF/CÓDIGO: ${p.codigo}
       }
 
       try {
-        const standardContext = await BotTrainingService.getKnowledgeContext(bot.botId);
+        const standardContext = await BotTrainingService.getKnowledgeContext(bot.botId, message);
         if (standardContext) {
           knowledgeContext = `${knowledgeContext}\n\n${standardContext}`.trim();
         }

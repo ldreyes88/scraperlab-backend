@@ -3,6 +3,16 @@ const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { nowColombiaISO } = require('../utils/time');
 
+// Caché en memoria para evitar Scan continuo a DynamoDB
+let cachedNodes = null;
+let cacheExpiry = 0;
+const CACHE_TTL_MS = 60 * 1000; // 60 segundos
+
+const invalidateCache = () => {
+  cachedNodes = null;
+  cacheExpiry = 0;
+};
+
 /**
  * Repositorio para la gestión de Nodos Independientes y Reutilizables en DynamoDB
  */
@@ -14,6 +24,12 @@ class NodeRepository {
    */
   static async getById(nodeId) {
     try {
+      // Si la caché está activa y contiene el nodo, resolver inmediatamente
+      if (cachedNodes && Date.now() < cacheExpiry) {
+        const found = cachedNodes.find(n => n.nodeId === nodeId);
+        if (found) return found;
+      }
+
       const result = await dynamoDB.send(
         new GetCommand({
           TableName: TABLES.NODES,
@@ -37,26 +53,36 @@ class NodeRepository {
    */
   static async getAll(filters = {}) {
     try {
-      const result = await dynamoDB.send(
-        new ScanCommand({
-          TableName: TABLES.NODES
-        })
-      );
+      const now = Date.now();
+      let items;
 
-      let items = result.Items || [];
+      if (cachedNodes && now < cacheExpiry) {
+        items = cachedNodes;
+      } else {
+        const result = await dynamoDB.send(
+          new ScanCommand({
+            TableName: TABLES.NODES
+          })
+        );
+        items = result.Items || [];
+        cachedNodes = items;
+        cacheExpiry = now + CACHE_TTL_MS;
+      }
+
+      let filteredItems = [...items];
 
       // Aplicar filtros en memoria (para tablas con cardinalidad baja/media)
       if (filters.clientId) {
-        items = items.filter(n => n.clientId === filters.clientId || n.clientId === 'global' || !n.clientId);
+        filteredItems = filteredItems.filter(n => n.clientId === filters.clientId || n.clientId === 'global' || !n.clientId);
       }
       if (filters.category) {
-        items = items.filter(n => n.category === filters.category);
+        filteredItems = filteredItems.filter(n => n.category === filters.category);
       }
       if (filters.type) {
-        items = items.filter(n => n.type === filters.type);
+        filteredItems = filteredItems.filter(n => n.type === filters.type);
       }
 
-      return items;
+      return filteredItems;
     } catch (error) {
       console.error('Error al listar nodos del catálogo:', error);
       throw error;
@@ -94,6 +120,7 @@ class NodeRepository {
         })
       );
 
+      invalidateCache();
       return item;
     } catch (error) {
       console.error('Error al crear nodo:', error);
@@ -128,6 +155,7 @@ class NodeRepository {
         })
       );
 
+      invalidateCache();
       return updated;
     } catch (error) {
       console.error(`Error al actualizar nodo ${nodeId}:`, error);
@@ -148,6 +176,7 @@ class NodeRepository {
           Key: { nodeId }
         })
       );
+      invalidateCache();
       return true;
     } catch (error) {
       console.error(`Error al eliminar nodo ${nodeId}:`, error);

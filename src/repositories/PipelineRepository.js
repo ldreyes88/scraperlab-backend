@@ -2,9 +2,24 @@ const { dynamoDB, TABLES } = require('../config/database');
 const { GetCommand, PutCommand, ScanCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { nowColombiaISO } = require('../utils/time');
 
+// Caché en memoria para evitar Scan continuo a DynamoDB
+let cachedPipelines = null;
+let cacheExpiry = 0;
+const CACHE_TTL_MS = 60 * 1000; // 60 segundos
+
+const invalidateCache = () => {
+  cachedPipelines = null;
+  cacheExpiry = 0;
+};
+
 class PipelineRepository {
   static async getById(pipelineId) {
     try {
+      if (cachedPipelines && Date.now() < cacheExpiry) {
+        const found = cachedPipelines.find(p => p.pipelineId === pipelineId);
+        if (found) return found;
+      }
+
       const result = await dynamoDB.send(
         new GetCommand({
           TableName: TABLES.PIPELINES,
@@ -20,12 +35,20 @@ class PipelineRepository {
 
   static async getAll() {
     try {
+      const now = Date.now();
+      if (cachedPipelines && now < cacheExpiry) {
+        return cachedPipelines;
+      }
+
       const result = await dynamoDB.send(
         new ScanCommand({
           TableName: TABLES.PIPELINES
         })
       );
-      return result.Items || [];
+      const items = result.Items || [];
+      cachedPipelines = items;
+      cacheExpiry = now + CACHE_TTL_MS;
+      return items;
     } catch (error) {
       console.error('Error getting all pipelines:', error);
       throw error;
@@ -47,6 +70,7 @@ class PipelineRepository {
         })
       );
 
+      invalidateCache();
       return item;
     } catch (error) {
       console.error('Error creating pipeline:', error);
@@ -75,6 +99,7 @@ class PipelineRepository {
         })
       );
 
+      invalidateCache();
       return updated;
     } catch (error) {
       console.error('Error updating pipeline:', error);
@@ -90,6 +115,7 @@ class PipelineRepository {
           Key: { pipelineId }
         })
       );
+      invalidateCache();
       return true;
     } catch (error) {
       console.error('Error deleting pipeline:', error);
