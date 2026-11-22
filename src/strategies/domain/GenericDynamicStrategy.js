@@ -79,7 +79,7 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       const $ = cheerio.load(content);
 
       if (scrapeType === 'search') {
-        return this.handleSearchExtraction($, selectors, url, domainConfig.domainId);
+        return this.handleSearchExtraction($, selectors, url, domainConfig.domainId, domainConfig);
       }
 
       // 3. Pipeline de extracción para Detail / SearchSpecific
@@ -222,15 +222,20 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
   /**
    * Maneja la extracción de múltiples productos para el tipo 'search'
    */
-  handleSearchExtraction($, selectors, url, marketplace) {
+  handleSearchExtraction($, selectors, url, marketplace, domainConfig = {}) {
     const results = [];
     const container = selectors.containerSelector;
+    const maxLimit = Number(domainConfig.limit || domainConfig.maxResults || 3);
 
     if (!container) {
       throw new Error('containerSelector no definido para tipo search en la base de datos');
     }
 
     $(container).each((i, el) => {
+      if (results.length >= maxLimit) {
+        return false; // Cortar iteración al alcanzar el límite configurado (por defecto máx 3)
+      }
+
       const item = $(el);
       const row = {
         title: selectors.titleSelector ? item.find(selectors.titleSelector).first().text().trim() : '',
@@ -267,6 +272,7 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
    */
   handleSearchJsonExtraction(content, selectors, url, marketplace, domainConfig = {}) {
     const searchConfig = selectors.jsonPath || selectors.apiFields || selectors || {};
+    const maxLimit = Number(domainConfig.limit || domainConfig.maxResults || 3);
     
     let items = content;
     if (!Array.isArray(items)) {
@@ -274,6 +280,10 @@ class GenericDynamicStrategy extends BaseDomainStrategy {
       else if (Array.isArray(items.data)) items = items.data;
       else if (Array.isArray(items.items)) items = items.items;
       else items = [items];
+    }
+
+    if (items.length > maxLimit) {
+      items = items.slice(0, maxLimit);
     }
 
     const results = items.map(item => {

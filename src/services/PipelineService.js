@@ -833,7 +833,7 @@ class PipelineService {
             } catch (_) {}
           }
           if (items && items.length > 0) {
-            candidates = items.slice(0, 5).map((item, idx) => {
+            candidates = items.slice(0, 3).map((item, idx) => {
               const price = toSafeNumber(item.items?.[0]?.sellers?.[0]?.commertialOffer?.Price, 0);
               const origPrice = toSafeNumber(item.items?.[0]?.sellers?.[0]?.commertialOffer?.ListPrice, price);
               const discount = (origPrice > price && origPrice > 0) ? Math.round(((origPrice - price) / origPrice) * 100) : 0;
@@ -878,7 +878,7 @@ class PipelineService {
               'X-Algolia-Application-Id': appId,
               'X-Algolia-API-Key': apiKey
             },
-            body: JSON.stringify({ query, hitsPerPage: 5 })
+            body: JSON.stringify({ query, hitsPerPage: 3 })
           });
 
           if (res.ok) {
@@ -887,7 +887,7 @@ class PipelineService {
               const host = key === 'ktronix' ? 'https://www.ktronix.com' : 'https://www.alkosto.com';
               const storeName = key === 'ktronix' ? 'Ktronix' : 'Alkosto';
 
-              candidates = data.hits.map((hit, idx) => {
+              candidates = data.hits.slice(0, 3).map((hit, idx) => {
                 const price = toSafeNumber(hit.lowestprice_double || hit.discountprice_double || hit.pricevalue_cop_double, 0);
                 const origPrice = toSafeNumber(hit.baseprice_cop_string || hit.pricevalue_cop_double, price);
                 const discount = toSafeNumber(hit.percentagediscount_string, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
@@ -930,9 +930,10 @@ class PipelineService {
 
         try {
           // saveLog = false para no duplicar un registro 'simple' por cada tienda consultada dentro de un pipeline
-          const scrapeRes = await ScraperService.scrapeUrl(searchUrl, false, 'search');
+          // limit: 3 para extraer únicamente el top 2-3 de resultados por comercio
+          const scrapeRes = await ScraperService.scrapeUrl(searchUrl, false, 'search', null, null, 'simple', { limit: 3 });
           if (scrapeRes && scrapeRes.success && Array.isArray(scrapeRes.data?.results) && scrapeRes.data.results.length > 0) {
-            candidates = scrapeRes.data.results.slice(0, 5).map((res, idx) => {
+            candidates = scrapeRes.data.results.slice(0, 3).map((res, idx) => {
               const price = toSafeNumber(res.currentPrice || res.price, 0);
               const origPrice = toSafeNumber(res.originalPrice || res.price, price);
               const discount = toSafeNumber(res.discount, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));

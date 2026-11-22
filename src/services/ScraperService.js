@@ -6,7 +6,7 @@ const { extractDomain } = require('../utils/helpers');
 const { nowColombiaISO } = require('../utils/time');
 
 class ScraperService {
-  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null, processType = 'simple') {
+  static async scrapeUrl(url, saveLog = true, scrapeType = 'detail', userId = null, userEmail = null, processType = 'simple', options = {}) {
     const startTime = Date.now();
     const domain = extractDomain(url);
     
@@ -22,6 +22,13 @@ class ScraperService {
     try {
       // 1. Obtener configuración del dominio
       const domainConfig = await DomainConfigService.getConfigForUrl(url, scrapeType);
+      
+      // Aplicar opciones adicionales si se especifican (ej: limit de resultados de búsqueda)
+      if (options && typeof options === 'object') {
+        if (options.limit !== undefined) {
+          domainConfig.limit = Number(options.limit);
+        }
+      }
       
       // 2. Obtener estrategia específica para el dominio, tipología y tipo
       const strategy = StrategyFactory.getDomainStrategy(
