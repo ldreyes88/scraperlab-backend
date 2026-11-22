@@ -1,5 +1,5 @@
 {
-  "name": "scraperlab-backend",
+  "name": "scraperlabs-backend",
   "version": "1.0.0",
   "description": "Backend centralizado para gestión de scraping por dominios",
   "main": "server.js",

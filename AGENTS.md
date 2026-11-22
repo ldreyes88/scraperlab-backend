@@ -1,5 +1,5 @@
-# Estándares Específicos: ScraperLab Backend (@sb)
-- Ámbito: `/Users/ldreyes/Documents/Proyectos/github/scraperlab-backend` (Tags: `@sb`, `scraper back`, `scraperlab backend`).
+# Estándares Específicos: ScraperLabs Backend (@sb)
+- Ámbito: `/Users/ldreyes/Documents/Proyectos/github/scraperlabs-backend` (Tags: `@sb`, `scraper back`, `scraperlabs backend`).
 - Node.js >= 22 (ES6+), Express / AWS Lambda.
 - Flujo en Capas:
   - `src/handlers/`: Controladores HTTP, validación y respuestas estándar (`src/utils/response.js`).
@@ -8,5 +8,5 @@
   - `src/strategies/`: Patrón Strategy para proveedores (`ScraperAPIStrategy`, `OxylabsStrategy`) y dominios (`BaseDomainStrategy`, `Falabella`, `Exito`, `MercadoLibre`).
   - `src/middleware/`: Manejo global (`errorHandler.js`), CORS.
   - `src/utils/`: Helpers reutilizables (`response.js`, `time.js`).
-- Calidad: Sintaxis válida y sin errores. Mantener actualizados `scraperlab-backend-structure.txt` y `scraperlab-backend-arquitecture.txt`.
+- Calidad: Sintaxis válida y sin errores. Mantener actualizados `scraperlabs-backend-structure.txt` y `scraperlabs-backend-arquitecture.txt`.
 - Despliegues & Git: Los agentes están autorizados a realizar `commit` y `push` directo a la rama productiva (`master`) tras verificar sintaxis y validaciones correspondientes.

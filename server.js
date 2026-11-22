@@ -62,7 +62,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    service: 'scraperlab-backend',
+    service: 'scraperlabs-backend',
     stage: process.env.STAGE,
     timestamp: new Date().toISOString()
   });
