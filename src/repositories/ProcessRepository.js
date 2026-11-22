@@ -201,40 +201,60 @@ class ProcessRepository {
 
   static async getPaginated(page = 1, pageSize = 20, filters = {}) {
     try {
-      // Estrategia simplificada: Scan TODO sin filtros complejos de DynamoDB, filtrar en memoria
-      // Esto es más confiable que usar FilterExpression que puede causar scans vacíos
+      // Proyección para NO descargar el payload pesado ('data', 'results', 'output') en el listado general
       const params = {
-        TableName: TABLES.PROCESS
+        TableName: TABLES.PROCESS,
+        ProjectionExpression: 'logId, processId, processType, pipelineId, domainId, #d, #u, #s, #ts, startTime, endTime, #tr, success, successCount, failedCount, totalUrls, userEmail, userId, clientId, #err',
+        ExpressionAttributeNames: {
+          '#d': 'domain',
+          '#u': 'url',
+          '#s': 'status',
+          '#ts': 'timestamp',
+          '#tr': 'trigger',
+          '#err': 'error'
+        }
       };
 
-      // Hacer scan completo (puede hacer múltiples llamadas automáticamente)
+      // Si se filtra por dominio y no hay otros filtros complejos, usar el GSI domainId-timestamp-index
       let allItems = [];
-      let lastEvaluatedKey = null;
-      let scanIterations = 0;
+      if (filters.domainId) {
+        let lastEvaluatedKey = null;
+        do {
+          const queryParams = {
+            TableName: TABLES.PROCESS,
+            IndexName: 'domainId-timestamp-index',
+            KeyConditionExpression: 'domainId = :d',
+            ExpressionAttributeValues: { ':d': filters.domainId },
+            ScanIndexForward: false,
+            Limit: 100
+          };
+          if (lastEvaluatedKey) queryParams.ExclusiveStartKey = lastEvaluatedKey;
+          const qRes = await dynamoDB.send(new QueryCommand(queryParams));
+          allItems = allItems.concat(qRes.Items || []);
+          lastEvaluatedKey = qRes.LastEvaluatedKey;
+        } while (lastEvaluatedKey && allItems.length < 500);
+      } else {
+        // Scan optimizado con proyección
+        let lastEvaluatedKey = null;
+        let scanIterations = 0;
 
-      do {
-        if (lastEvaluatedKey) {
-          params.ExclusiveStartKey = lastEvaluatedKey;
-        }
+        do {
+          if (lastEvaluatedKey) {
+            params.ExclusiveStartKey = lastEvaluatedKey;
+          }
 
-        const result = await dynamoDB.send(new ScanCommand(params));
-        const items = result.Items || [];
-        
-        allItems = allItems.concat(items);
-        lastEvaluatedKey = result.LastEvaluatedKey;
-        scanIterations++;
+          const result = await dynamoDB.send(new ScanCommand(params));
+          const items = result.Items || [];
+          
+          allItems = allItems.concat(items);
+          lastEvaluatedKey = result.LastEvaluatedKey;
+          scanIterations++;
 
-        // Continuar hasta que no haya más datos
-        if (!lastEvaluatedKey) {
-          break;
-        }
-
-        // Límite de seguridad: máximo 10 iteraciones
-        if (scanIterations >= 10) {
-          break;
-        }
-
-      } while (true);
+          if (!lastEvaluatedKey || scanIterations >= 10) {
+            break;
+          }
+        } while (true);
+      }
 
       // FILTRAR EN MEMORIA (más confiable)
       let filteredItems = [...allItems];

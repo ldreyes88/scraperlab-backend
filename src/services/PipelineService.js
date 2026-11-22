@@ -304,7 +304,8 @@ class PipelineService {
 
         console.log(`Ejecutando scraping de búsqueda en ${domainId}: ${searchUrl}`);
         
-        const scrapeResult = await ScraperService.scrapeUrl(searchUrl, true, 'search');
+        // saveLog = false para no polucionar la tabla de procesos con logs individuales de cada tienda dentro de un pipeline
+        const scrapeResult = await ScraperService.scrapeUrl(searchUrl, false, 'search');
         
         return {
           domainId,
@@ -928,7 +929,8 @@ class PipelineService {
         console.log(`[Hunter] Buscando vía ScraperService en ${config.name}: ${searchUrl}`);
 
         try {
-          const scrapeRes = await ScraperService.scrapeUrl(searchUrl, true, 'search');
+          // saveLog = false para no duplicar un registro 'simple' por cada tienda consultada dentro de un pipeline
+          const scrapeRes = await ScraperService.scrapeUrl(searchUrl, false, 'search');
           if (scrapeRes && scrapeRes.success && Array.isArray(scrapeRes.data?.results) && scrapeRes.data.results.length > 0) {
             candidates = scrapeRes.data.results.slice(0, 5).map((res, idx) => {
               const price = toSafeNumber(res.currentPrice || res.price, 0);

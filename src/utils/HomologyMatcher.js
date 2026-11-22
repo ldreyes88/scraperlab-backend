@@ -60,6 +60,24 @@ function extractAttributes(text = '') {
 }
 
 /**
+ * Compara si dos tokens son equivalentes considerando plurales y singulares comunes en español (-s, -es).
+ */
+function areTokensEquivalent(t1 = '', t2 = '') {
+  if (t1 === t2) return true;
+  if (Math.abs(t1.length - t2.length) > 2) return false;
+
+  const s1 = t1.endsWith('s') ? t1.slice(0, -1) : t1;
+  const s2 = t2.endsWith('s') ? t2.slice(0, -1) : t2;
+  if (s1 === s2 || s1 === t2 || t1 === s2) return true;
+
+  const es1 = t1.endsWith('es') ? t1.slice(0, -2) : t1;
+  const es2 = t2.endsWith('es') ? t2.slice(0, -2) : t2;
+  if (es1 === es2 || es1 === t2 || t1 === es2) return true;
+
+  return false;
+}
+
+/**
  * Calcula un score de 0 a 100 de compatibilidad entre el producto base y el candidato.
  * 
  * @param {Object} base - { name, price, brand, category }
@@ -176,8 +194,10 @@ function calculateHomologyScore(base = {}, candidate = {}) {
   let tokenMatchRatio = 0;
   if (baseTokens.length > 0) {
     let matchedTokens = 0;
+    const candTokensArray = Array.from(candTokens);
     for (const token of baseTokens) {
-      if (candTokens.has(token)) {
+      const found = candTokens.has(token) || candTokensArray.some(ct => areTokensEquivalent(token, ct));
+      if (found) {
         matchedTokens++;
       }
     }
