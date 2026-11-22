@@ -8,7 +8,8 @@ const {
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
   AdminUserGlobalSignOutCommand,
-  AdminDeleteUserCommand
+  AdminDeleteUserCommand,
+  ListUsersCommand
 } = require('@aws-sdk/client-cognito-identity-provider');
 
 class CognitoService {
@@ -379,19 +380,74 @@ class CognitoService {
   }
 
   /**
-   * Eliminar usuario de Cognito
+   * Buscar usuario en Cognito por sub (userId) o email
    */
-  async deleteUser(username) {
+  async findCognitoUser(identifier) {
+    if (!identifier) return null;
+    try {
+      // 1. Intentar buscar por sub
+      const subRes = await this.cognitoClient.send(new ListUsersCommand({
+        UserPoolId: this.userPoolId,
+        Filter: `\"sub\" = \"${identifier}\"`,
+        Limit: 1
+      }));
+      if (subRes.Users && subRes.Users.length > 0) {
+        return subRes.Users[0];
+      }
+
+      // 2. Si parece email o no encontró por sub, buscar por email
+      if (identifier.includes('@')) {
+        const emailRes = await this.cognitoClient.send(new ListUsersCommand({
+          UserPoolId: this.userPoolId,
+          Filter: `\"email\" = \"${identifier}\"`,
+          Limit: 1
+        }));
+        if (emailRes.Users && emailRes.Users.length > 0) {
+          return emailRes.Users[0];
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`[CognitoService] Error buscando usuario Cognito (${identifier}):`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Eliminar usuario de Cognito (soporta Username directo, sub o email)
+   */
+  async deleteUser(usernameOrIdentifier) {
+    if (!usernameOrIdentifier) return { success: false, error: 'Identificador requerido' };
+
+    // Intentar primero eliminar directamente por el username recibido
     try {
       const command = new AdminDeleteUserCommand({
         UserPoolId: this.userPoolId,
-        Username: username
+        Username: usernameOrIdentifier
       });
       await this.cognitoClient.send(command);
       return { success: true };
-    } catch (error) {
-      console.warn(`[CognitoService] Advertencia eliminando usuario ${username} de Cognito:`, error.message);
-      return { success: false, error: error.message };
+    } catch (directErr) {
+      // Si el username no coincide directamente (por ejemplo en usuarios federados con Google donde Username = Google_12345 y no el sub o email),
+      // buscar el Username real en Cognito
+      const cognitoUser = await this.findCognitoUser(usernameOrIdentifier);
+      if (cognitoUser && cognitoUser.Username && cognitoUser.Username !== usernameOrIdentifier) {
+        try {
+          const retryCommand = new AdminDeleteUserCommand({
+            UserPoolId: this.userPoolId,
+            Username: cognitoUser.Username
+          });
+          await this.cognitoClient.send(retryCommand);
+          return { success: true };
+        } catch (retryErr) {
+          console.warn(`[CognitoService] Error eliminando usuario por Username resuelto ${cognitoUser.Username}:`, retryErr.message);
+          return { success: false, error: retryErr.message };
+        }
+      }
+
+      console.warn(`[CognitoService] Advertencia eliminando usuario ${usernameOrIdentifier} de Cognito:`, directErr.message);
+      return { success: false, error: directErr.message };
     }
   }
 
