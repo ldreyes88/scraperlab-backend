@@ -144,6 +144,15 @@ class UserService {
   }
 
   /**
+   * Eliminar usuario permanentemente de DynamoDB
+   */
+  async deleteUserPermanently(userId) {
+    const user = await this.userRepository.getUserById(userId);
+    await this.userRepository.deleteUserPermanently(userId);
+    return { message: 'Usuario eliminado permanentemente', user };
+  }
+
+  /**
    * Listar usuarios con filtros
    */
   async listUsers(options = {}) {

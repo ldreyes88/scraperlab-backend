@@ -191,11 +191,12 @@ const updateUser = async (req, res) => {
 
 /**
  * DELETE /api/users/:userId
- * Eliminar usuario (soft delete - solo admin)
+ * Eliminar usuario (soporta ?permanent=true para borrado definitivo de DynamoDB/Cognito, o soft delete)
  */
 const deleteUser = async (req, res) => {
   try {
     const { userId } = req.params;
+    const isPermanent = req.query.permanent === 'true';
 
     // No permitir que un admin se elimine a sí mismo
     if (userId === req.user.userId) {
@@ -205,6 +206,57 @@ const deleteUser = async (req, res) => {
       });
     }
 
+    if (isPermanent) {
+      // 1. Obtener datos del usuario antes de borrar
+      let user = null;
+      try {
+        user = await userService.getUserById(userId);
+      } catch (e) {
+        // Podría no existir en DB
+      }
+
+      // 2. Eliminar permanentemente de DynamoDB
+      await userService.deleteUserPermanently(userId);
+
+      // 3. Si tiene email, removerlo de la lista de empresas (Clients)
+      if (user?.email) {
+        try {
+          const { dynamoDB, TABLES } = require('../config/database');
+          const { ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+          const scanRes = await dynamoDB.send(new ScanCommand({ TableName: TABLES.CLIENTS }));
+          for (const clientItem of scanRes.Items || []) {
+            if (clientItem.allowedUsers && clientItem.allowedUsers.includes(user.email)) {
+              const updatedUsers = clientItem.allowedUsers.filter(e => e !== user.email);
+              await dynamoDB.send(new UpdateCommand({
+                TableName: TABLES.CLIENTS,
+                Key: { clientId: clientItem.clientId },
+                UpdateExpression: 'SET allowedUsers = :allowedUsers',
+                ExpressionAttributeValues: { ':allowedUsers': updatedUsers }
+              }));
+            }
+          }
+        } catch (clientErr) {
+          console.warn('[deleteUser] Error limpiando usuario de clients:', clientErr.message);
+        }
+      }
+
+      // 4. Intentar eliminar de Cognito si corresponde
+      try {
+        // En Cognito el username puede ser el sub o el email o Google_<id>
+        if (user?.email) {
+          await cognitoService.deleteUser(user.email);
+        }
+        await cognitoService.deleteUser(userId);
+      } catch (cognitoErr) {
+        console.warn('[deleteUser] Error eliminando en Cognito:', cognitoErr.message);
+      }
+
+      return res.json({
+        message: 'Usuario eliminado permanentemente'
+      });
+    }
+
+    // Soft delete por defecto
     await userService.deleteUser(userId);
 
     res.json({

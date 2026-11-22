@@ -7,7 +7,8 @@ const {
   AdminConfirmSignUpCommand,
   AdminUpdateUserAttributesCommand,
   AdminGetUserCommand,
-  AdminUserGlobalSignOutCommand
+  AdminUserGlobalSignOutCommand,
+  AdminDeleteUserCommand
 } = require('@aws-sdk/client-cognito-identity-provider');
 
 class CognitoService {
@@ -381,8 +382,17 @@ class CognitoService {
    * Eliminar usuario de Cognito
    */
   async deleteUser(username) {
-    // AWS SDK: cognito.adminDeleteUser({...}).promise();
-    return { success: true };
+    try {
+      const command = new AdminDeleteUserCommand({
+        UserPoolId: this.userPoolId,
+        Username: username
+      });
+      await this.cognitoClient.send(command);
+      return { success: true };
+    } catch (error) {
+      console.warn(`[CognitoService] Advertencia eliminando usuario ${username} de Cognito:`, error.message);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
