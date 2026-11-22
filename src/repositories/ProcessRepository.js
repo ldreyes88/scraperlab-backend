@@ -201,23 +201,50 @@ class ProcessRepository {
 
   static async getPaginated(page = 1, pageSize = 20, filters = {}) {
     try {
-      // Proyección para NO descargar el payload pesado ('data', 'results', 'output') en el listado general
-      const params = {
-        TableName: TABLES.PROCESS,
-        ProjectionExpression: 'logId, processId, processType, pipelineId, domainId, #d, #u, #s, #ts, startTime, endTime, #tr, success, successCount, failedCount, totalUrls, userEmail, userId, clientId, #err',
-        ExpressionAttributeNames: {
-          '#d': 'domain',
-          '#u': 'url',
-          '#s': 'status',
-          '#ts': 'timestamp',
-          '#tr': 'trigger',
-          '#err': 'error'
-        }
-      };
-
-      // Si se filtra por dominio y no hay otros filtros complejos, usar el GSI domainId-timestamp-index
       let allItems = [];
-      if (filters.domainId) {
+      const hasSpecificType = filters.processType && !filters.processType.includes(',');
+      const typesToQuery = hasSpecificType 
+        ? [filters.processType] 
+        : (filters.processType ? filters.processType.split(',') : ['pipeline', 'simple', 'batch', 'product_monitoring']);
+
+      // 1. ESTRATEGIA ÓPTIMA: Si hay filtro de fecha (from/to), consultar el GSI processType-timestamp-index con Query
+      // Esto evita hacer Scan sobre toda la tabla de 25k items
+      let usedGSI = false;
+      if (filters.from) {
+        try {
+          const fromIso = `${filters.from}T00:00:00`;
+          const toIso = filters.to ? `${filters.to}T23:59:59` : `${filters.from}T23:59:59`;
+
+          const promises = typesToQuery.map(async (pType) => {
+            const queryParams = {
+              TableName: TABLES.PROCESS,
+              IndexName: 'processType-timestamp-index',
+              KeyConditionExpression: 'processType = :pt AND #ts BETWEEN :from AND :to',
+              ExpressionAttributeNames: { '#ts': 'timestamp' },
+              ExpressionAttributeValues: {
+                ':pt': pType,
+                ':from': fromIso,
+                ':to': toIso
+              },
+              ScanIndexForward: false,
+              Limit: 100
+            };
+            const res = await dynamoDB.send(new QueryCommand(queryParams));
+            return res.Items || [];
+          });
+
+          const results = await Promise.all(promises);
+          allItems = results.flat();
+          usedGSI = true;
+        } catch (gsiErr) {
+          // Si el GSI aún está en estado CREATING o falla, fallback controlado a Scan con proyección
+          console.warn('[ProcessRepository] GSI query no disponible aún, usando scan con proyección:', gsiErr.message);
+          usedGSI = false;
+        }
+      }
+
+      // 2. Si se filtra por dominio y no se usó el GSI de fecha
+      if (!usedGSI && filters.domainId) {
         let lastEvaluatedKey = null;
         do {
           const queryParams = {
@@ -233,8 +260,21 @@ class ProcessRepository {
           allItems = allItems.concat(qRes.Items || []);
           lastEvaluatedKey = qRes.LastEvaluatedKey;
         } while (lastEvaluatedKey && allItems.length < 500);
-      } else {
-        // Scan optimizado con proyección
+      } else if (!usedGSI) {
+        // 3. Fallback: Scan ultraligero con ProjectionExpression
+        const params = {
+          TableName: TABLES.PROCESS,
+          ProjectionExpression: 'logId, processId, processType, pipelineId, domainId, #d, #u, #s, #ts, startTime, endTime, #tr, success, successCount, failedCount, totalUrls, userEmail, userId, clientId, #err',
+          ExpressionAttributeNames: {
+            '#d': 'domain',
+            '#u': 'url',
+            '#s': 'status',
+            '#ts': 'timestamp',
+            '#tr': 'trigger',
+            '#err': 'error'
+          }
+        };
+
         let lastEvaluatedKey = null;
         let scanIterations = 0;
 
