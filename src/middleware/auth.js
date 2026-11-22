@@ -154,6 +154,7 @@ const verifyApiKey = async (req, res, next) => {
       userId: user.userId,
       email: user.email,
       role: user.role,
+      clientIds: user.clientIds || [],
       authMethod: 'apiKey'
     };
 

@@ -1,6 +1,5 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { dynamoDB, TABLES } = require('../config/database');
 const {
-  DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   UpdateCommand,
@@ -12,9 +11,8 @@ const { nowColombiaISO } = require('../utils/time');
 
 class UserRepository {
   constructor() {
-    const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
-    this.docClient = DynamoDBDocumentClient.from(client);
-    this.tableName = process.env.USERS_TABLE_NAME || 'ScraperLab-Users';
+    this.docClient = dynamoDB;
+    this.tableName = TABLES.USERS;
   }
 
   /**
@@ -110,7 +108,7 @@ class UserRepository {
     };
 
     // Campos permitidos para actualizar
-    const allowedFields = ['role', 'hasEnterpriseAccess', 'isActive', 'metadata', 'apiKey', 'apiKeyLastUsed'];
+    const allowedFields = ['role', 'hasEnterpriseAccess', 'isActive', 'metadata', 'apiKey', 'apiKeyLastUsed', 'clientIds'];
     
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {
@@ -249,6 +247,34 @@ class UserRepository {
     });
 
     return counts;
+  }
+
+  /**
+   * Agregar un clientId a un usuario por email
+   */
+  async addClientToUser(email, clientId) {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+
+    const currentClientIds = user.clientIds || [];
+    if (currentClientIds.includes(clientId)) {
+      return user;
+    }
+
+    const updatedClientIds = [...currentClientIds, clientId];
+    return await this.updateUser(user.userId, { clientIds: updatedClientIds });
+  }
+
+  /**
+   * Remover un clientId de un usuario por email
+   */
+  async removeClientFromUser(email, clientId) {
+    const user = await this.getUserByEmail(email);
+    if (!user) return null;
+
+    const currentClientIds = user.clientIds || [];
+    const updatedClientIds = currentClientIds.filter(id => id !== clientId);
+    return await this.updateUser(user.userId, { clientIds: updatedClientIds });
   }
 }
 

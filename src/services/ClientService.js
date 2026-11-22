@@ -1,4 +1,7 @@
 const ClientRepository = require('../repositories/ClientRepository');
+const UserRepository = require('../repositories/UserRepository');
+
+const userRepo = new UserRepository();
 
 class ClientService {
   /**
@@ -160,6 +163,13 @@ class ClientService {
 
       const updatedClient = await ClientRepository.addUserToClient(clientId, userEmail);
 
+      // Sincronizar en ScraperLab-Users de manera bidireccional
+      try {
+        await userRepo.addClientToUser(userEmail, clientId);
+      } catch (userSyncErr) {
+        console.warn(`No se pudo sincronizar clientId ${clientId} en el usuario ${userEmail}:`, userSyncErr.message);
+      }
+
       return {
         success: true,
         client: updatedClient,
@@ -187,6 +197,13 @@ class ClientService {
       }
 
       const updatedClient = await ClientRepository.removeUserFromClient(clientId, userEmail);
+
+      // Sincronizar remoción en ScraperLab-Users
+      try {
+        await userRepo.removeClientFromUser(userEmail, clientId);
+      } catch (userSyncErr) {
+        console.warn(`No se pudo remover clientId ${clientId} en el usuario ${userEmail}:`, userSyncErr.message);
+      }
 
       return {
         success: true,
