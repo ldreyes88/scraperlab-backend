@@ -45,7 +45,7 @@ class AgentOrchestratorService {
           },
           channels: {
             web: { enabled: true, allowedDomains: ['*'] },
-            whatsapp: { enabled: true, phoneNumber: '573219662703' }
+            whatsapp: { enabled: true, phoneNumber: '573053206465' }
           }
         };
       } else {
@@ -57,7 +57,7 @@ class AgentOrchestratorService {
           hideArchitecture: true,
           restrictOffTopic: true,
           channels: {
-            whatsapp: { enabled: true, phoneNumber: '573219662703' }
+            whatsapp: { enabled: true, phoneNumber: '573053206465' }
           }
         };
       }
@@ -167,7 +167,7 @@ class AgentOrchestratorService {
       const phone = bot.channels?.whatsapp?.humanSupportNumber ||
                     bot.channels?.whatsapp?.agentPhoneNumber ||
                     bot.channels?.whatsapp?.phoneNumber ||
-                    (isOferty ? '573053206465' : '573219662703');
+                    '573053206465';
       const cleanPhone = phone.replace(/[^0-9]/g, '');
 
       if (channel === 'whatsapp') {
