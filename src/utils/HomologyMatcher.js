@@ -48,7 +48,11 @@ function extractAttributes(text = '') {
   if (wattMatch) attributes.watts = `${wattMatch[1]}w`;
 
   // Identificadores alfanuméricos de modelo (ej. VT40SPM, ERTS17G2HKS, S24, A16, etc.)
+  // Excluimos explícitamente tokens de almacenamiento (como 512gb, 128gb, 1tb) y volumen (173l)
   const modelTokens = norm.split(' ').filter(token => {
+    if (/^\d+(gb|tb|l|lt|lts|w|watts|pulg|pulgadas)$/.test(token)) {
+      return false;
+    }
     // Al menos 3 caracteres, contiene dígitos y letras
     return token.length >= 3 && /[0-9]/.test(token) && /[a-z]/.test(token);
   });
@@ -101,6 +105,36 @@ function calculateHomologyScore(base = {}, candidate = {}) {
         score: 0,
         isMatch: false,
         reasons: [`Descartado: contiene palabra de accesorio/repuesto ("${acc}")`]
+      };
+    }
+  }
+
+  // 1.1 REGLA DE EXCLUSIÓN POR TIPO DE DISPOSITIVO (ej. Celular vs Tablet)
+  const DEVICE_TYPES = ['tablet', 'tab', 'ipad', 'celular', 'smartphone', 'laptop', 'portatil', 'computador', 'smartwatch', 'audifonos', 'nevera', 'lavadora', 'televisor'];
+  for (const dt of DEVICE_TYPES) {
+    const dtRegex = new RegExp(`\\b${dt}\\b`, 'i');
+    if (dtRegex.test(candNorm) && !dtRegex.test(baseNorm)) {
+      return {
+        score: 0,
+        isMatch: false,
+        reasons: [`Descartado: tipo de producto no coincide ("${dt}")`]
+      };
+    }
+  }
+
+  // 1.2 REGLA DE SUB-MODELO (ej. Pro vs Pro Max, Plus vs Mini, Ultra vs Base)
+  const SUB_MODELS = ['pro max', 'pro', 'max', 'plus', 'mini', 'ultra', 'fe'];
+  const baseSubModels = SUB_MODELS.filter(sm => new RegExp(`\\b${sm}\\b`, 'i').test(baseNorm));
+  const candSubModels = SUB_MODELS.filter(sm => new RegExp(`\\b${sm}\\b`, 'i').test(candNorm));
+
+  if (baseSubModels.length > 0) {
+    const baseBestSub = baseSubModels[0]; // ej: "pro max"
+    const candBestSub = candSubModels[0] || '';
+    if (baseBestSub !== candBestSub) {
+      return {
+        score: 0,
+        isMatch: false,
+        reasons: [`Descartado: variante de modelo no coincide (base=${baseBestSub} vs cand=${candBestSub || 'estándar'})`]
       };
     }
   }

@@ -987,6 +987,8 @@ class PipelineService {
 
       console.log(`[Hunter] ✅ Homólogo encontrado en ${key}: "${bestCandidate.name}" con score ${bestCandidate.homologyScore}%`);
       bestCandidate.success = true;
+      bestCandidate.storeKey = key;
+      bestCandidate.scrapedTitle = bestCandidate.name;
       return bestCandidate;
     });
 
