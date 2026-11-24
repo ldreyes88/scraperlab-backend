@@ -10,6 +10,8 @@ const fs = require('fs');
  * Costo: ~$0 en proxies de terceros.
  * Soporta ejecución de JavaScript, SPAs, espera de selectores y cookies de sesión.
  */
+let localProfileMutex = Promise.resolve();
+
 class ScraperLabsApiStrategy extends BaseStrategy {
   constructor() {
     super('ScraperLabsApi');
@@ -69,6 +71,24 @@ class ScraperLabsApiStrategy extends BaseStrategy {
    * @param {Object} domainConfig - Configuración del dominio y provider
    */
   async scrape(url, domainConfig = {}) {
+    const userDataDir = domainConfig.providerConfig?.user_data_dir || process.env.SCRAPERLABS_USER_DATA_DIR || null;
+
+    // Si se usa un userDataDir compartido en entorno local, serializar con mutex para evitar
+    // el bloqueo "The browser is already running for .../chrome-profile" cuando llegan ráfagas en paralelo.
+    if (userDataDir && !Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT)) {
+      const executeNext = () => this._executeScrape(url, domainConfig);
+      const executionPromise = localProfileMutex.then(executeNext, executeNext);
+      localProfileMutex = executionPromise.catch(() => {});
+      return await executionPromise;
+    }
+
+    return await this._executeScrape(url, domainConfig);
+  }
+
+  /**
+   * Ejecución interna del ciclo de vida del navegador y scraping
+   */
+  async _executeScrape(url, domainConfig = {}) {
     const { providerConfig = {}, selectors } = domainConfig;
 
     const puppeteerMod = await import('puppeteer-core');
