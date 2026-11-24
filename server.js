@@ -20,6 +20,7 @@ const botsHandler = require('./src/handlers/bots');
 const chatHandler = require('./src/handlers/chat');
 const whatsappHandler = require('./src/handlers/whatsapp');
 const aiEnrichHandler = require('./src/handlers/ai-enrich');
+const agentTasksHandler = require('./src/handlers/agentTasks');
 
 const app = express();
 
@@ -158,6 +159,14 @@ app.get('/api/chat/sessions/:sessionId', chatHandler.getSession);
 app.put('/api/chat/sessions/:sessionId/takeover', verifyAuth, chatHandler.setTakeover);
 app.post('/api/chat/sessions/:sessionId/agent-message', verifyAuth, chatHandler.sendAgentMessage);
 app.get('/api/bots/:botId/public', botsHandler.getPublicBotConfig);
+
+// 🚀 Agent Backlog & Orchestration endpoints (Oferty / Influenty / ScraperLabs)
+app.get('/api/agent-tasks', verifyAuth, agentTasksHandler.getAllTasks);
+app.get('/api/agent-tasks/:taskId', verifyAuth, agentTasksHandler.getTaskById);
+app.post('/api/agent-tasks', verifyAuth, agentTasksHandler.createTask);
+app.put('/api/agent-tasks/:taskId', verifyAuth, agentTasksHandler.updateTask);
+app.post('/api/agent-tasks/:taskId/advance', verifyAuth, agentTasksHandler.advanceTaskStage);
+app.delete('/api/agent-tasks/:taskId', verifyAuth, agentTasksHandler.deleteTask);
 
 // 📱 WhatsApp Cloud API Webhooks & Mensajería
 app.get('/api/whatsapp/webhook', whatsappHandler.verifyWebhook);

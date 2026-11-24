@@ -109,16 +109,38 @@ function calculateHomologyScore(base = {}, candidate = {}) {
     }
   }
 
-  // 1.1 REGLA DE EXCLUSIÓN POR TIPO DE DISPOSITIVO (ej. Celular vs Tablet)
-  const DEVICE_TYPES = ['tablet', 'tab', 'ipad', 'celular', 'smartphone', 'laptop', 'portatil', 'computador', 'smartwatch', 'audifonos', 'nevera', 'lavadora', 'televisor'];
-  for (const dt of DEVICE_TYPES) {
-    const dtRegex = new RegExp(`\\b${dt}\\b`, 'i');
-    if (dtRegex.test(candNorm) && !dtRegex.test(baseNorm)) {
-      return {
-        score: 0,
-        isMatch: false,
-        reasons: [`Descartado: tipo de producto no coincide ("${dt}")`]
-      };
+  // 1.1 REGLA DE EXCLUSIÓN POR TIPO DE DISPOSITIVO CRUZADO
+  // Familias incompatibles (si la base pertenece a una familia, el candidato no puede pertenecer a otra)
+  const CROSS_DEVICE_FAMILIES = [
+    { family: 'computadores', types: ['laptop', 'portatil', 'portátil', 'computador', 'computadores', 'macbook'] },
+    { family: 'tablets', types: ['tablet', 'tablets', 'tab', 'ipad'] },
+    { family: 'celulares', types: ['celular', 'celulares', 'smartphone', 'smartphones', 'telefono', 'teléfono', 'telefonos', 'teléfonos'] },
+    { family: 'smartwatches', types: ['smartwatch', 'smartwatches', 'reloj inteligente'] },
+    { family: 'audifonos', types: ['audifonos', 'audífonos', 'airpods', 'auriculares'] },
+    { family: 'linea_blanca', types: ['nevera', 'neveras', 'refrigerador', 'refrigeradores', 'lavadora', 'lavadoras', 'secadora', 'secadoras'] }
+  ];
+
+  const baseCatClean = cleanString(base.category || '');
+  const combinedBase = `${baseNorm} ${baseCatClean}`;
+
+  for (const group of CROSS_DEVICE_FAMILIES) {
+    const isBaseInFamily = group.types.some(t => new RegExp(`\\b${t}\\b`, 'i').test(combinedBase));
+    if (isBaseInFamily) {
+      // Si la base es de una familia (ej: celular), no puede aparecer una palabra de otra familia distinta (ej: tablet)
+      for (const otherGroup of CROSS_DEVICE_FAMILIES) {
+        if (otherGroup.family !== group.family) {
+          for (const forbiddenType of otherGroup.types) {
+            const forbiddenRegex = new RegExp(`\\b${forbiddenType}\\b`, 'i');
+            if (forbiddenRegex.test(candNorm) && !forbiddenRegex.test(baseNorm)) {
+              return {
+                score: 0,
+                isMatch: false,
+                reasons: [`Descartado: tipo de producto no coincide (${group.family} vs ${forbiddenType})`]
+              };
+            }
+          }
+        }
+      }
     }
   }
 
@@ -201,12 +223,20 @@ function calculateHomologyScore(base = {}, candidate = {}) {
     }
   }
 
-  // Modelo alfanumérico coincidente
+  // Modelo alfanumérico coincidente (o contenido, ej. "bu8000" dentro de "un55bu8000", o serie numérica compartida ej. 8000)
   if (baseAttrs.models && candAttrs.models) {
-    const commonModels = baseAttrs.models.filter(m => candAttrs.models.includes(m));
+    const commonModels = baseAttrs.models.filter(m => 
+      candAttrs.models.some(cm => {
+        if (cm === m || cm.includes(m) || m.includes(cm)) return true;
+        // Comparación de series numéricas de al menos 3 o 4 dígitos (ej. "8000" en "55u8000h" y "bu8000")
+        const numM = m.match(/\d{3,}/);
+        const numCm = cm.match(/\d{3,}/);
+        return numM && numCm && numM[0] === numCm[0];
+      })
+    );
     if (commonModels.length > 0) {
       score += 35;
-      reasons.push(`Modelo exacto encontrado: ${commonModels.join(', ')}`);
+      reasons.push(`Modelo o serie coincidente: ${commonModels.join(', ')}`);
     }
   }
 

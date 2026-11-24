@@ -755,7 +755,18 @@ class PipelineService {
       ? rawMarkets 
       : String(rawMarkets).split(',').map(m => m.trim().toLowerCase());
 
-    console.log(`[Hunter] Iniciando búsqueda multi-sitio en paralelo para: "${query}"`, targetMarkets);
+    // Extraer pulgadas o especificaciones si vienen en specs o en input
+    const specs = state.input?.specs || {};
+    let searchTerms = query;
+    const inchSpec = specs.tamano_pantalla || specs.pulgadas || specs.pantalla || state.input?.tamano_pantalla;
+    if (inchSpec && !/\b\d+\s*(pulgadas|pulg|"|'|cm)\b/i.test(query)) {
+      const match = String(inchSpec).match(/\d+/);
+      if (match) {
+        searchTerms = `${query} ${match[0]} Pulgadas`;
+      }
+    }
+
+    console.log(`[Hunter] Iniciando búsqueda multi-sitio en paralelo para: "${searchTerms}" (Original: "${query}")`, targetMarkets);
 
     const MARKETPLACE_CONFIGS = {
       'alkosto': {
@@ -792,7 +803,7 @@ class PipelineService {
 
     // Datos base para evaluación de homología
     const baseProductInfo = {
-      name: query,
+      name: searchTerms,
       price: toSafeNumber(state.input?.price || state.input?.currentPrice || 0),
       brand: state.input?.brand || '',
       category: state.input?.category || ''
@@ -801,7 +812,7 @@ class PipelineService {
     // Scraping en paralelo para todos los comercios seleccionados
     const promises = targetMarkets.map(async (marketKey) => {
       const key = marketKey.toLowerCase().replace(/[^a-z]/g, '');
-      console.log(`[Hunter] Ejecutando búsqueda live para ${key} con término "${query}"...`);
+      console.log(`[Hunter] Ejecutando búsqueda live para ${key} con término "${searchTerms}"...`);
 
       let candidates = [];
 
@@ -809,9 +820,9 @@ class PipelineService {
       if (key === 'exito') {
         try {
           const exitoUrls = [
-            `https://exitocol.vtexcommercestable.com.br/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`,
-            `https://www.exito.com/io/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`,
-            `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(query)}`
+            `https://exitocol.vtexcommercestable.com.br/api/catalog_system/pub/products/search?ft=${encodeURIComponent(searchTerms)}`,
+            `https://www.exito.com/io/api/catalog_system/pub/products/search?ft=${encodeURIComponent(searchTerms)}`,
+            `https://www.exito.com/api/catalog_system/pub/products/search?ft=${encodeURIComponent(searchTerms)}`
           ];
           let items = null;
           for (const exitoUrl of exitoUrls) {
@@ -878,7 +889,7 @@ class PipelineService {
               'X-Algolia-Application-Id': appId,
               'X-Algolia-API-Key': apiKey
             },
-            body: JSON.stringify({ query, hitsPerPage: 3 })
+            body: JSON.stringify({ query: searchTerms, hitsPerPage: 3 })
           });
 
           if (res.ok) {
@@ -891,7 +902,7 @@ class PipelineService {
                 const price = toSafeNumber(hit.lowestprice_double || hit.discountprice_double || hit.pricevalue_cop_double, 0);
                 const origPrice = toSafeNumber(hit.baseprice_cop_string || hit.pricevalue_cop_double, price);
                 const discount = toSafeNumber(hit.percentagediscount_string, (origPrice > price && origPrice > 0 ? Math.round(((origPrice - price) / origPrice) * 100) : 0));
-                const pUrl = hit.url_es_string ? `${host}${hit.url_es_string}` : `${host}/search?text=${encodeURIComponent(query)}`;
+                const pUrl = hit.url_es_string ? `${host}${hit.url_es_string}` : `${host}/search?text=${encodeURIComponent(searchTerms)}`;
                 const pImg = hit['img-750wx750h_string'] || hit['img-310wx310h_string'] || hit['img-1400wx1400h_string'] || null;
                 const pName = hit.name_text_es || query;
                 const pBrand = hit.brand_string || (Array.isArray(hit.brand_string_mv) ? hit.brand_string_mv[0] : hit.marca_text) || '';
@@ -925,7 +936,7 @@ class PipelineService {
         const config = MARKETPLACE_CONFIGS[key];
         if (!config) return null;
 
-        const searchUrl = config.searchUrl(query);
+        const searchUrl = config.searchUrl(searchTerms);
         console.log(`[Hunter] Buscando vía ScraperService en ${config.name}: ${searchUrl}`);
 
         try {
