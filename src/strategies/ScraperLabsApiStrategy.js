@@ -111,19 +111,39 @@ class ScraperLabsApiStrategy extends BaseStrategy {
       }
     }
 
+    // Configuración de persistencia de perfil (userDataDir) y modo headless/off-screen
+    const userDataDir = providerConfig.user_data_dir || process.env.SCRAPERLABS_USER_DATA_DIR || null;
+    const isHeadless = isLambda
+      ? chromium.headless
+      : (providerConfig.headless !== undefined ? providerConfig.headless : (process.env.SCRAPERLABS_HEADLESS === 'false' || Boolean(userDataDir) ? false : true));
+
+    if (!isLambda && !isHeadless) {
+      launchArgs.push('--no-first-run', '--no-default-browser-check');
+      // Si corre en máquina local/servidor sin pantalla estricta, renderizar en canvas virtual off-screen
+      if (process.env.SCRAPERLABS_OFFSCREEN !== 'false') {
+        launchArgs.push('--window-position=-2400,-2400');
+      }
+    }
+
     let browser = null;
     let page = null;
 
     try {
-      browser = await puppeteer.launch({
+      const launchOptions = {
         args: launchArgs,
         defaultViewport: {
           width: parseInt(providerConfig.viewport_width || 1920, 10),
           height: parseInt(providerConfig.viewport_height || 1080, 10)
         },
         executablePath,
-        headless: isLambda ? chromium.headless : true
-      });
+        headless: isHeadless
+      };
+
+      if (userDataDir) {
+        launchOptions.userDataDir = userDataDir;
+      }
+
+      browser = await puppeteer.launch(launchOptions);
 
       page = await browser.newPage();
 
