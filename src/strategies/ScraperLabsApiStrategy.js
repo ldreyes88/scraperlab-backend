@@ -66,15 +66,35 @@ class ScraperLabsApiStrategy extends BaseStrategy {
   }
 
   /**
+   * Obtiene la ruta del directorio de usuario si el dominio tiene habilitada la sesión/perfil.
+   * Si el dominio no lo especifica, devuelve null (scraping normal y ligero).
+   */
+  resolveUserDataDir(domainConfig = {}) {
+    const providerConfig = domainConfig.providerConfig || {};
+    // El dominio debe solicitarlo explícitamente: use_session_profile === true, session_type === 'profile', o providerConfig.user_data_dir
+    const wantsProfile = Boolean(
+      providerConfig.use_session_profile ||
+      providerConfig.session_type === 'profile' ||
+      providerConfig.user_data_dir
+    );
+
+    if (!wantsProfile) {
+      return null;
+    }
+
+    return providerConfig.user_data_dir || process.env.SCRAPERLABS_USER_DATA_DIR || null;
+  }
+
+  /**
    * Realiza el scraping usando Chromium Headless de ScraperLabs
    * @param {string} url - URL a navegar
    * @param {Object} domainConfig - Configuración del dominio y provider
    */
   async scrape(url, domainConfig = {}) {
-    const userDataDir = domainConfig.providerConfig?.user_data_dir || process.env.SCRAPERLABS_USER_DATA_DIR || null;
+    const userDataDir = this.resolveUserDataDir(domainConfig);
 
-    // Si se usa un userDataDir compartido en entorno local, serializar con mutex para evitar
-    // el bloqueo "The browser is already running for .../chrome-profile" cuando llegan ráfagas en paralelo.
+    // Solo si el dominio requiere un userDataDir compartido en entorno local, serializar con mutex.
+    // Todos los demás dominios normales se ejecutan en paralelo sin esperarse.
     if (userDataDir && !Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT)) {
       const executeNext = () => this._executeScrape(url, domainConfig);
       const executionPromise = localProfileMutex.then(executeNext, executeNext);
@@ -100,7 +120,10 @@ class ScraperLabsApiStrategy extends BaseStrategy {
     const isLambda = Boolean(process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT);
     const executablePath = await this.getExecutablePath(chromium);
 
-    console.log(`[ScraperLabsApi] Navegando a: ${url} (Entorno: ${isLambda ? 'AWS Lambda' : 'Local'})`);
+    // Determinar si este dominio en particular requiere sesión/perfil
+    const userDataDir = this.resolveUserDataDir(domainConfig);
+
+    console.log(`[ScraperLabsApi] Navegando a: ${url} (Entorno: ${isLambda ? 'AWS Lambda' : 'Local'}, Perfil: ${userDataDir ? 'Activo' : 'Estándar ligero'})`);
 
     const launchArgs = isLambda
       ? [...chromium.args, '--disable-blink-features=AutomationControlled']
@@ -132,7 +155,6 @@ class ScraperLabsApiStrategy extends BaseStrategy {
     }
 
     // Configuración de persistencia de perfil (userDataDir) y modo headless/off-screen
-    const userDataDir = providerConfig.user_data_dir || process.env.SCRAPERLABS_USER_DATA_DIR || null;
     const isHeadless = isLambda
       ? chromium.headless
       : (providerConfig.headless !== undefined ? providerConfig.headless : (process.env.SCRAPERLABS_HEADLESS === 'false' || Boolean(userDataDir) ? false : true));

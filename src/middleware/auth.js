@@ -192,7 +192,31 @@ const verifyAuth = async (req, res, next) => {
 
   // Si no hay JWT, intentar con API key
   if (apiKey) {
+    // Si coincide con las llaves de sistema configuradas en el entorno
+    if (
+      apiKey === process.env.SCRAPERLAB_API_KEY ||
+      apiKey === process.env.OFERTY_INTERNAL_API_KEY
+    ) {
+      req.user = {
+        userId: 'system-agent',
+        email: 'agent@scraperlabs.com.co',
+        role: 'admin',
+        authMethod: 'apiKey'
+      };
+      return next();
+    }
     return verifyApiKey(req, res, next);
+  }
+
+  // Si estamos en entorno de desarrollo local y no hay token, permitir sesión local de admin
+  if (process.env.NODE_ENV === 'development' || process.env.STAGE === 'dev') {
+    req.user = {
+      userId: 'dev-admin',
+      email: 'admin@scraperlabs.com.co',
+      role: 'admin',
+      authMethod: 'dev'
+    };
+    return next();
   }
 
   // Si no hay ninguno, rechazar
