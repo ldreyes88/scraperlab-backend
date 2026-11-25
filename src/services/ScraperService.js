@@ -106,10 +106,12 @@ class ScraperService {
         errorType = 'scraping_error';
       }
 
-      // Actualizar a fallido si hubo un error de red o de provider
-      DomainConfigService.updateScrapeStatus(domain, 'failed', error.message, errorType).catch(err => 
-        console.error(`[ScraperService] Error updating status for ${domain}:`, err)
-      );
+      // Actualizar a fallido si hubo un error de red o de provider (a menos que el dominio esté intencionalmente deshabilitado)
+      if (!msg.includes('deshabilitado')) {
+        DomainConfigService.updateScrapeStatus(domain, 'failed', error.message, errorType).catch(err => 
+          console.error(`[ScraperService] Error updating status for ${domain}:`, err)
+        );
+      }
 
       if (saveLog) {
         await ProcessRepository.create({
